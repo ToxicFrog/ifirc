@@ -50,7 +50,7 @@
   ;#alt/random/markov-chains: not the face, not the face
   (#"#.*?/([^/]+)\s*:\s*(.*)" [_ chan topic]
     (forward ":ToxicFrog JOIN #" chan)
-    (forward ":IFMUD 332 ToxicFrog #" chan ":" topic))
+    (forward ":IFMUD 332 ToxicFrog #" chan " :" topic))
 
   (#"\[(.+?)\] (.+?) says, \"(.*)\"" [_ chan user msg]
     (forward ":" user " PRIVMSG #" chan " :" msg))
