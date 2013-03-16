@@ -13,6 +13,8 @@
 (defmogs from-irc
   (#"PASS (.*)" [_ auth]
     (str "connect " auth))
+  (#"QUIT :.*" [_]
+    "quit")
   (#"PRIVMSG -IFMUD- :(.*)" [_ msg]
     msg))
 
@@ -32,6 +34,7 @@
   (upstream [this msg]
     (write irc (domogs from-mud msg)))
   (disconnect [this]
+    (write irc ":-IFMUD- NOTICE you :Disconnected by server.")
     (close irc)))
 
 (defhandler IRC [host port]
