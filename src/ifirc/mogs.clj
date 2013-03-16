@@ -29,21 +29,28 @@
   (#"MODE .*" [_]
     true)
 
+  (#"PING (.*)" [_ time]
+    (reply ":IFMUD PONG IFMUD :" time))
+
   (#"PRIVMSG (#.+?) :(.*)" [_ chan msg]
     (forward chan " " msg))
 
-  (#"PRIVMSG -IFMUD- :(.*)" [_ msg]
-    (println ">>" msg)
-    (forward msg)))
+  (#"PRIVMSG &IFMUD :(.*)" [_ msg]
+    (forward msg))
+
+  (#".*" [line]
+    (reply "[???] " line)))
 
 (defmogs from-mud
   (#"Login Succeeded" [_]
-    (reply "@listc -member"))
+    (reply "@listc -member")
+    (forward ":IFMUD 376 ToxicFrog :End of MOTD")
+    (forward ":ToxicFrog JOIN &IFMUD"))
 
   ;#alt/random/markov-chains: not the face, not the face
   (#"#.*?/([^/]+)\s*:\s*(.*)" [_ chan topic]
     (forward ":ToxicFrog JOIN #" chan)
-    (forward "TOPIC #" chan " :" topic))
+    (forward ":IFMUD 332 ToxicFrog #" chan ":" topic))
 
   (#"\[(.+?)\] (.+?) says, \"(.*)\"" [_ chan user msg]
     (forward ":" user " PRIVMSG #" chan " :" msg))
@@ -52,7 +59,7 @@
     (forward ":" user " JOIN #" chan))
 
   (#"\[(.+?)\] (.*)" [_ chan msg]
-    (forward ":-IFMUD- PRIVMSG #" chan " :" msg))
+    (forward ":* PRIVMSG #" chan " :" msg))
 
   (#".*" [line]
-    (forward ":-IFMUD- PRIVMSG you :" line)))
+    (forward ":* PRIVMSG &IFMUD :" line)))
