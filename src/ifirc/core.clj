@@ -30,7 +30,7 @@
 (defhandler MUD [irc]
   ""
   (upstream [this msg]
-    (write irc (dopattern from-mud msg)))
+    (write irc (domogs from-mud msg)))
   (disconnect [this]
     (close irc)))
 
@@ -40,7 +40,7 @@
     (let [client (start-client :nonblocking :string (new SplitLines) (new Print "MUD ") (new MUD (get-connection)))]
       (assoc this :mud (open client host port))))
   (upstream [this msg]
-    (write (:mud this) (dopattern from-irc msg)))
+    (write (:mud this) (domogs from-irc msg)))
   (disconnect [this]
     (close (:mud this))))
 

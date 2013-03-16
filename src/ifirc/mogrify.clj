@@ -12,8 +12,8 @@
   (let [mogs (map (partial apply defmog) mogs)]
     `(def ~name [~@mogs])))
 
-(defn dopattern [patterns line]
-  (let [output (some #(% line) patterns)]
+(defn domogs [mogs line]
+  (let [output (some #(% line) mogs)]
     (cond
       output output
       :else line)))
