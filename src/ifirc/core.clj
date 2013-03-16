@@ -20,12 +20,6 @@
   (#".*" [line]
     (str ":-IFMUD- PRIVMSG you :" line)))
 
-(defn irc-to-mud [msg]
-  (dopattern irc-patterns msg))
-
-(defn mud-to-irc [msg]
-  (dopattern mud-patterns msg))
-
 (defhandler SplitLines []
   "Splits multi-line messages into individual lines. Use after :string."
   (upstream [this msg]
@@ -36,7 +30,7 @@
 (defhandler MUD [irc]
   ""
   (upstream [this msg]
-    (write irc (mud-to-irc msg)))
+    (write irc (dopattern mud-patterns msg)))
   (disconnect [this]
     (close irc)))
 
@@ -46,7 +40,7 @@
     (let [client (start-client :nonblocking :string (new SplitLines) (new Print "MUD ") (new MUD (get-connection)))]
       (assoc this :mud (open client host port))))
   (upstream [this msg]
-    (write (:mud this) (irc-to-mud msg)))
+    (write (:mud this) (dopattern irc-patterns msg)))
   (disconnect [this]
     (close (:mud this))))
 
