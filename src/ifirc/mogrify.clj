@@ -19,7 +19,8 @@
     `(fn [line#]
        (case (re-matches ~regex line#)
          nil nil
-         (apply (fn ~args ~@body) (flatten (vector (re-matches ~regex line#)))))))
+         (apply (fn ~args ~@body) (flatten (vector (re-matches ~regex line#))))
+         "")))
   (let [mogs (map (partial apply defmog) mogs)]
     `(def ~name [~@mogs])))
 
