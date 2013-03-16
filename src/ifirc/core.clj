@@ -2,23 +2,9 @@
   (:gen-class)
   (:use [saturnine.core]
         [saturnine.handler]
-        [clojure.string :only [split-lines join]])
+        [clojure.string :only [split-lines]]
+        [ifirc.mogrify])
   (:import [saturnine.core.internal Print]))
-
-(defmacro defpatterns [name & patterns]
-  (defn defpattern [regex args & body]
-    `(fn [line#]
-      (case (re-matches ~regex line#)
-        nil nil
-        (apply (fn ~args ~@body) (flatten (vector (re-matches ~regex line#)))))))
-  (let [patterns (map (partial apply defpattern) patterns)]
-    `(def ~name [~@patterns])))
-
-(defn dopattern [patterns line]
-  (let [output (some #(% line) patterns)]
-    (cond
-      output output
-      :else line)))
 
 ; We need two connections. One is a Server, with an upstream line that translates IRC messages into IFMUD ones.
 ; When connected to, it creates a Client, with an upstream that translates IFMUD messages into IRC ones.
