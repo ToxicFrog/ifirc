@@ -10,13 +10,13 @@
 ; When connected to, it creates a Client, with an upstream that translates IFMUD messages into IRC ones.
 ; The topmost handler of each just (write)s to the other.
 
-(defpatterns irc-patterns
+(defmogs from-irc
   (#"PASS (.*)" [_ auth]
     (str "connect " auth))
   (#"PRIVMSG -IFMUD- :(.*)" [_ msg]
     msg))
 
-(defpatterns mud-patterns
+(defmogs from-mud
   (#".*" [line]
     (str ":-IFMUD- PRIVMSG you :" line)))
 
@@ -30,7 +30,7 @@
 (defhandler MUD [irc]
   ""
   (upstream [this msg]
-    (write irc (dopattern mud-patterns msg)))
+    (write irc (dopattern from-mud msg)))
   (disconnect [this]
     (close irc)))
 
@@ -40,7 +40,7 @@
     (let [client (start-client :nonblocking :string (new SplitLines) (new Print "MUD ") (new MUD (get-connection)))]
       (assoc this :mud (open client host port))))
   (upstream [this msg]
-    (write (:mud this) (dopattern irc-patterns msg)))
+    (write (:mud this) (dopattern from-irc msg)))
   (disconnect [this]
     (close (:mud this))))
 

@@ -3,14 +3,14 @@
         [saturnine.handler]
         [clojure.string :only [split-lines join]]))
 
-(defmacro defpatterns [name & patterns]
-  (defn defpattern [regex args & body]
+(defmacro defmogs [name & mogs]
+  (defn defmog [regex args & body]
     `(fn [line#]
        (case (re-matches ~regex line#)
          nil nil
          (apply (fn ~args ~@body) (flatten (vector (re-matches ~regex line#)))))))
-  (let [patterns (map (partial apply defpattern) patterns)]
-    `(def ~name [~@patterns])))
+  (let [mogs (map (partial apply defmog) mogs)]
+    `(def ~name [~@mogs])))
 
 (defn dopattern [patterns line]
   (let [output (some #(% line) patterns)]
