@@ -34,3 +34,18 @@
       output output
       :else line)))
 
+; (mogrify listen host port upstream downstream)
+(defn mogrify
+  "Start a proxy that bidirectionally mogrifies text passing through it.
+
+  When started, will listen on listen-port for client connections. Each such connection will be paired to an outgoing
+  connection to server-host:server-port. Messages from the client to the server will have (domogs upstream) applied to
+  them; messages from the server to the client will have (domogs downstream).
+
+  Internally, uses saturnine for networking and filter chaining; up-filters and down-filters are sequences of additional
+  saturnine filters to apply. The first two filters are always String and SplitLines, as without those (domogs) won't
+  work; you might want to add something like Print for logging."
+  ([listen-port server-host server-port upstream downstream]
+    nil)
+  ([listen-port server-host server-port upstream downstream up-filters down-filters]
+    nil))
