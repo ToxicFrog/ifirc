@@ -46,6 +46,6 @@
   saturnine filters to apply. The first two filters are always String and SplitLines, as without those (domogs) won't
   work; you might want to add something like Print for logging."
   ([listen-port server-host server-port upstream downstream]
-    nil)
+    (mogrify listen-port server-host server-port upstream downstream [] []))
   ([listen-port server-host server-port upstream downstream up-filters down-filters]
     nil))
