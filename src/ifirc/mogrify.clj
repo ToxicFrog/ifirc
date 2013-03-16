@@ -8,32 +8,30 @@
 
   Each mogrification has the form
     (re [args] body)
-  and is compiled into a function f that when called as (f line), evaluates (re-matches re line), binds the result to
-  args, and evaluates body.
-
-  If re does not match line, it returns nil.
+  and is compiled into a function f that when called as (f line), evaluates (re-matches re line). If the result is nil,
+  it returns false. Otherwise, it binds the result(s) to args, evaluates body, and returns true.
 
   The resulting list is intended for use with (domogs) and (mogrify)."
   [name & mogs]
   (defn defmog [regex args & body]
+    (assert (= java.util.regex.Pattern (type regex)) "Wrong pattern type in defmog")
     `(fn [line#]
-       (case (re-matches ~regex line#)
-         nil nil
-         (apply (fn ~args ~@body) (flatten (vector (re-matches ~regex line#))))
-         "")))
+      (let [match# (re-matches ~regex line#)
+            handler# (fn ~args ~@body true)]
+        (cond
+          (= match# nil) false
+          (string? match#) (handler# match#)
+          (vector? match#) (apply handler# match#)))))
   (let [mogs (map (partial apply defmog) mogs)]
     `(def ~name [~@mogs])))
 
 (defn domogs
   "Apply a list of mogrifications created with (defmogs) to a line of text.
 
-  Sequentially evaluates mogs to find the first one that matches line, and returns the result of that one. If none of
-  the mogs match, returns the unmodified line. Mogs are evaluated in the same order they were listed in (defmogs)."
+  Sequentially evaluates mogs to find the first one that matches line, and evaluates that mog's handler. Returns true
+  if a mog matched, false otherwise."
   [mogs line]
-  (let [output (some #(% line) mogs)]
-    (cond
-      output output
-      :else line)))
+  (some #(% line) mogs))
 
 ; (mogrify listen host port upstream downstream)
 (defn mogrify

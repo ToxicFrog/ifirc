@@ -33,20 +33,26 @@
     (forward chan " " msg))
 
   (#"PRIVMSG -IFMUD- :(.*)" [_ msg]
+    (println ">>" msg)
     (forward msg)))
 
 (defmogs from-mud
+  (#"Login Succeeded" [_]
+    (reply "@listc -member"))
+
+  ;#alt/random/markov-chains: not the face, not the face
+  (#"#.*?/([^/]+)\s*:\s*(.*)" [_ chan topic]
+    (forward ":ToxicFrog JOIN #" chan)
+    (forward "TOPIC #" chan " :" topic))
+
   (#"\[(.+?)\] (.+?) says, \"(.*)\"" [_ chan user msg]
     (forward ":" user " PRIVMSG #" chan " :" msg))
 
+  (#"\[(.+?)\] \* (.+?) has joined the channel." [_ chan user]
+    (forward ":" user " JOIN #" chan))
+
   (#"\[(.+?)\] (.*)" [_ chan msg]
     (forward ":-IFMUD- PRIVMSG #" chan " :" msg))
-
-  (#"New default channel: \(none\)" [line]
-    (forward ":-IFMUD- PRIVMSG you :" line))
-
-  (#"New default channel: (.*)" [_ chan]
-    (forward ":ToxicFrog JOIN #" chan))
 
   (#".*" [line]
     (forward ":-IFMUD- PRIVMSG you :" line)))
