@@ -8,9 +8,20 @@
 (defn forward [& rest]
   (send-up (apply str rest)))
 
+(defn get-state [] {})
+
 (defmogs from-irc
-  (#"PASS (.*)" [_ auth]
-    (forward "connect " auth))
+  (#"NICK (.*)" [_ nick]
+    (let [state (assoc (get-state) :nick nick)]
+      (cond
+        (state :pass) (forward "connect " nick " " (state :pass)))
+      state))
+
+  (#"PASS (.*)" [_ pass]
+    (let [state (assoc (get-state) :pass pass)]
+      (cond
+        (state :nick) (forward "connect " (state :nick) " " pass))
+      state))
 
   (#"QUIT :.*" [_]
     (forward "quit"))

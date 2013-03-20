@@ -1,7 +1,8 @@
 (ns ifirc.mogrify
   (:use [saturnine.core]
         [saturnine.handler]
-        [clojure.string :only [split-lines join]]))
+        [clojure.string :only [split-lines join]])
+  (:import [saturnine.core.internal Print]))
 
 (defmacro defmogs
   "Define a list of mogrifications to apply to a stream of lines of text.
@@ -25,6 +26,7 @@
   (let [mogs (map (partial apply defmog) mogs)]
     `(def ~name [~@mogs])))
 
+
 (defn domogs
   "Apply a list of mogrifications created with (defmogs) to a line of text.
 
@@ -33,18 +35,52 @@
   [mogs line]
   (some #(% line) mogs))
 
-; (mogrify listen host port upstream downstream)
-(defn mogrify
-  "Start a proxy that bidirectionally mogrifies text passing through it.
 
-  When started, will listen on listen-port for client connections. Each such connection will be paired to an outgoing
-  connection to server-host:server-port. Messages from the client to the server will have (domogs upstream) applied to
-  them; messages from the server to the client will have (domogs downstream).
+(defhandler SplitLines []
+  "Splits multi-line messages into individual lines. Use after :string."
+  (upstream [this msg]
+    (dorun (map send-up (split-lines msg))))
+  (downstream [this msg]
+    (send-down (str msg "\n"))))
 
-  Internally, uses saturnine for networking and filter chaining; up-filters and down-filters are sequences of additional
-  saturnine filters to apply. The first two filters are always String and SplitLines, as without those (domogs) won't
-  work; you might want to add something like Print for logging."
-  ([listen-port server-host server-port upstream downstream]
-    (mogrify listen-port server-host server-port upstream downstream [] []))
-  ([listen-port server-host server-port upstream downstream up-filters down-filters]
-    nil))
+
+(defhandler Mogrifier [up-mogs down-mogs]
+  "Bidirectional text filter. up-mogs and down-mogs should be mogrification lists created with (defmogs)."
+  (upstream [this msg]
+    (cond
+      (domogs (var-get up-mogs) msg) this
+      :else (send-up msg)))
+  (downstream [this msg]
+    (cond
+      (domogs (var-get down-mogs) msg) this
+      :else (send-down msg))))
+
+
+(defhandler MogClientConnector [client]
+  "The upstream-most handler in the mogrifier half connected to the server. Forwards messages to the client half."
+  (upstream [this msg]
+    (write client msg))
+  (disconnect [this]
+    (close client)))
+
+
+(defhandler MogServerConnector [host port]
+  "The upstream-most handler in the mogrifier half connected to the client. Creates a connection to the server on
+  (connect), and forwards messages to it."
+  (connect [this]
+    (let [to-server (start-client :blocking :string (new SplitLines) (new MogClientConnector (get-connection)))]
+      (assoc this :server (open to-server host port))))
+  (disconnect [this]
+    (close (this :server))))
+
+
+(defn start-mogrifier [listen host port up-mogs down-mogs]
+  "Start a proxy for bidirectional line-oriented text filtering based on the defmogs up-mogs and down-mogs. FIXME:
+  currently no support for connect/disconnect events in user code."
+  (start-server listen :blocking
+    :string
+    (new SplitLines)
+    (new Print "[CL] ")
+    (new Mogrifier up-mogs down-mogs)
+    (new Print "[SV] ")
+    (new MogServerConnector host port)))
