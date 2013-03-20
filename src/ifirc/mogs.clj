@@ -35,6 +35,9 @@
   (#"PRIVMSG (#.+?) :\u0001ACTION (.*)\u0001" [_ chan action]
     (forward chan " :" action))
 
+  (#"PRIVMSG (#.+?) :(\w+): (.*)" [_ chan target msg]
+    (forward chan " .." target " " msg))
+
   (#"PRIVMSG (#.+?) :(.*)" [_ chan msg]
     (forward chan " " msg))
 
@@ -51,15 +54,27 @@
     (forward ":ToxicFrog JOIN &IFMUD")
     (forward ":ToxicFrog JOIN &channels"))
 
+  ;bb message
+  ;#666 [alt/satan] From: The Pope
+  (#"#\d+ \[[^\]]+\].*" [line]
+    (forward ":* PRIVMSG &IFMUD :" line))
+
+  ;channel topic line from @joinc or @listc
   ;#alt/random/markov-chains: not the face, not the face
   (#"#.*?/([^/]+)\s*:\s*(.*)" [_ chan topic]
     (forward ":ToxicFrog JOIN #" chan)
     (forward ":IFMUD 332 ToxicFrog #" chan " :" topic))
 
+  (#"\[(.+?)\] ToxicFrog (?:says|asks|exclaims) \((?:to|of|at) (\w+)\), \"(.*)\"" [_ chan target msg]
+    true)
+
   (#"\[(.+?)\] ToxicFrog (says|asks|exclaims), \"(.*)\"" [_ chan _ msg]
     true)
 
-  (#"\[(.+?)\] (.+?) (says|asks|exclaims), \"(.*)\"" [_ chan user _ msg]
+  (#"\[(.+?)\] (.+?) (?:says|asks|exclaims) \((?:to|of|at) (\w+)\), \"(.*)\"" [_ chan user target msg]
+    (forward ":" user " PRIVMSG #" chan " :" target ": " msg))
+
+  (#"\[(.+?)\] (.+?) (?:says|asks|exclaims), \"(.*)\"" [_ chan user msg]
     (forward ":" user " PRIVMSG #" chan " :" msg))
 
   (#"\[(.+?)\] (.+?) (.*)" [_ chan user action]
