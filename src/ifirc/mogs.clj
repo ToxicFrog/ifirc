@@ -2,28 +2,16 @@
   (:use [saturnine.handler]
         [ifirc.mogrify]))
 
-(def channels #{
-  "#videogames"
-  "#programming"
-  "#apropros-of-nothing"
-  "#tangent"
-  "#tangent-tangent"
-  "#books"
-  "#gender"
-  "#minecraft"
-  "#google"
-  })
-
 (defmogs from-irc
   (#"NICK (.*)" [_ nick]
-    (let [state (assoc (get-state) :nick nick)]
+    (let [state (assoc (get-state) :nick nick :channels #{})]
       (println state)
       (cond
         (:pass state) (forward "connect " nick " " (:pass state)))
       (set-state state)))
 
   (#"PASS (.*)" [_ pass]
-    (let [state (assoc (get-state) :pass pass)]
+    (let [state (assoc (get-state) :pass pass :channels #{})]
       (cond
         (:nick state) (forward "connect " (:nick state) " " pass))
       (set-state state)))
@@ -33,11 +21,11 @@
 
   (#"JOIN (.*)" [_ chan]
     (reply ":" (get-state :nick) " JOIN " chan)
-    (forward "@joinc " chan))
+    (set-state :channels (conj (get-state :channels) chan)))
 
   (#"PART (.*)" [_ chan]
     (reply ":" (get-state :nick) " PART " chan)
-    (forward "@leavec " chan))
+    (set-state :channels (disj (get-state :channels) chan)))
 
   (#"WHO .*" [_]  ; FIXME - there needs to be a proper API for eating unwanted messages
     true)
@@ -70,7 +58,6 @@
     (reply "@listc -member")
     (forward ":IFMUD 376 " (get-state :nick) " :End of MOTD")
     (forward ":" (get-state :nick) " JOIN &IFMUD")
-    (forward ":" (get-state :nick) " JOIN &raw")
     (forward ":" (get-state :nick) " JOIN &channels"))
 
   (#"It reflects pings to keep someone from disconnecting." [_]
@@ -87,10 +74,17 @@
   (#"#.*?/([^/]+)\s*:\s*(.*)" [_ chan topic]
     (let [chan (str "#" (.trim chan))]
       (cond
-        (channels chan) (do
+        ((get-state :channels) chan) (do
           (forward ":" (get-state :nick) " JOIN " chan)
           (forward ":IFMUD 332 " (get-state :nick) " " chan " :" topic))
         :else (forward ":[" chan "] PRIVMSG &channels :Joined."))))
+
+  ;channel departure message
+  (#"You are no longer on (.*)\." [_ chan]
+    (cond
+      ((get-state :channels) chan) (do
+        (forward ":" (get-state :nick) " PART " chan))
+      :else (forward ":[" chan "] PRIVMSG &channels :Parted.")))
 
   ;targeted channel message - [foo] Someone says (to SomeoneElse), "stuff"
   (#"\[(.+?)\] (.+?) (?:says|asks|exclaims) \((?:to|of|at) (\w+)\), \"(.*)\"" [_ chan user target msg]
@@ -98,7 +92,7 @@
       (cond
         (= user (get-state :nick)) true
         :else (cond
-          (channels chan) (forward ":" user " PRIVMSG " chan " :" target ": " msg)
+          ((get-state :channels) chan) (forward ":" user " PRIVMSG " chan " :" target ": " msg)
           :else (forward ":[" chan "] PRIVMSG &channels :<" user "> " target ": " msg)))))
 
   ;untargeted channel message - [foo] Someone says, "stuff"
@@ -107,7 +101,7 @@
       (cond
         (= user (get-state :nick)) true
         :else (cond
-          (channels chan) (forward ":" user " PRIVMSG " chan " :" msg)
+          ((get-state :channels) chan) (forward ":" user " PRIVMSG " chan " :" msg)
           :else (forward ":[" chan "] PRIVMSG &channels :<" user "> " msg)))))
 
   ;channel action
@@ -116,7 +110,7 @@
       (cond
         (= user (get-state :nick)) true
         :else (cond
-          (channels chan) (forward ":" user " PRIVMSG " chan " :\u0001ACTION " action "\u0001")
+          ((get-state :channels) chan) (forward ":" user " PRIVMSG " chan " :\u0001ACTION " action "\u0001")
           :else (forward ":[" chan "]<" user "> PRIVMSG &channels :\u0001ACTION " action "\u0001")))))
 
   (#"\[(.+?)\] \* (.+?) has joined the channel." [_ chan user]

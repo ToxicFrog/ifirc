@@ -58,7 +58,9 @@
   ([] *state*)
   ([key] (key *state*)))
 
-(defn set-state [state] (set! *state* state))
+(defn set-state
+  ([state] (set! *state* state))
+  ([key value] (set! *state* (assoc *state* key value))))
 
 (defhandler Mogrifier [up-mogs down-mogs]
   "Bidirectional text filter. up-mogs and down-mogs should be mogrification lists created with (defmogs)."
