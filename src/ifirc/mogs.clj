@@ -71,7 +71,7 @@
   ;channel topic line from @joinc or @listc
   ;#alt/random/markov-chains: not the face, not the face
   ;used to determine which channels the user is in
-  (#"#.*?/([^/]+)\s*:\s*(.*)" [_ chan topic]
+  (#"#.*?/([^/\s]+).*?:\s*(.*)" [_ chan topic]
     (let [chan (str "#" (.trim chan))]
       (cond
         ((get-state :channels) chan) (do
