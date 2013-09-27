@@ -44,16 +44,36 @@
     (send-down (str msg "\n"))))
 
 
+(def ^:dynamic *forward* send-up)
+(def ^:dynamic *reply* send-down)
+(def ^:dynamic *state* {})
+
+(defn reply [& rest]
+  (*reply* (apply str rest)))
+
+(defn forward [& rest]
+  (*forward* (apply str rest)))
+
+(defn get-state
+  ([] *state*)
+  ([key] (key *state*)))
+
+(defn set-state [state] (set! *state* state))
+
 (defhandler Mogrifier [up-mogs down-mogs]
   "Bidirectional text filter. up-mogs and down-mogs should be mogrification lists created with (defmogs)."
   (upstream [this msg]
-    (cond
-      (domogs (var-get up-mogs) msg) this
-      :else (send-up msg)))
+    (binding [*forward* send-up
+              *reply* send-down
+              *state* this]
+      (domogs (var-get up-mogs) msg)
+      *state*))
   (downstream [this msg]
-    (cond
-      (domogs (var-get down-mogs) msg) this
-      :else (send-down msg))))
+    (binding [*forward* send-down
+              *reply* send-up
+              *state* this]
+      (domogs (var-get down-mogs) msg)
+      *state*)))
 
 
 (defhandler MogClientConnector [client]
@@ -68,10 +88,12 @@
   "The upstream-most handler in the mogrifier half connected to the client. Creates a connection to the server on
   (connect), and forwards messages to it."
   (connect [this]
-    (let [to-server (start-client :blocking :string (new SplitLines) (new MogClientConnector (get-connection)))]
+    (let [to-server (start-client :blocking :string (new SplitLines) (new Print "[SV] ") (new MogClientConnector (get-connection)))]
       (assoc this :server (open to-server host port))))
+  (upstream [this msg]
+    (write (:server this) msg))
   (disconnect [this]
-    (close (this :server))))
+    (close (:server this))))
 
 
 (defn start-mogrifier [listen host port up-mogs down-mogs]
@@ -82,5 +104,4 @@
     (new SplitLines)
     (new Print "[CL] ")
     (new Mogrifier up-mogs down-mogs)
-    (new Print "[SV] ")
     (new MogServerConnector host port)))
