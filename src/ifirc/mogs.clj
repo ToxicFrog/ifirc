@@ -83,7 +83,7 @@
         ((get-state :channels) chan) (do
           (forward ":" (get-state :nick) " JOIN " chan)
           (forward ":IFMUD 332 " (get-state :nick) " " chan " :" topic))
-        :else (forward ":[" chan "] PRIVMSG &channels :Joined."))))
+        :else (forward ":[" chan "] PRIVMSG &channels :" topic))))
 
   ; channel departure message
   (#"You are no longer on (.*)\." [_ chan]
