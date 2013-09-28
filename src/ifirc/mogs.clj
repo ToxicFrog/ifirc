@@ -127,5 +127,18 @@
   (#"\[(.+?)\] (.*)" [_ chan msg]
     (forward ":* PRIVMSG #" chan " :" msg))
 
+  ; targeted user message in local
+  (#"(\w+) (?:says|asks|exclaims) \((?:to|of|at) (\w+)\), \"(.*)\"" [_ user target msg]
+    (forward ":" user " PRIVMSG &IFMUD :" target ": " msg))
+
+  ; user message in local
+  (#"(\w+) (?:says|asks|exclaims), \"(.*)\"" [_ user msg]
+    (forward ":" user " PRIVMSG &IFMUD :" msg))
+  
+  ; your message in local
+  (#"You (say|ask|exclaim), \"(.*)\"" [_ _ msg]
+    (forward ":" (get-state :nick) " PRIVMSG &IFMUD :" msg))
+  
+  ; all other MUD traffic
   (#".*" [line]
     (forward ":* PRIVMSG &IFMUD :" line)))
