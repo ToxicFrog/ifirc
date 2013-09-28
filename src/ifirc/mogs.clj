@@ -69,14 +69,14 @@
   (#"It reflects pings to keep someone from disconnecting." [_]
     true)
 
-  ;bb message
-  ;#666 [alt/satan] From: The Pope
+  ; bb message
+  ; #666 [alt/satan] From: The Pope
   (#"#\d+ \[[^\]]+\].*" [line]
     (forward ":* PRIVMSG &IFMUD :" line))
 
-  ;channel topic line from @joinc or @listc
-  ;#alt/random/markov-chains: not the face, not the face
-  ;used to determine which channels the user is in
+  ; channel topic line from @joinc or @listc
+  ; #alt/random/markov-chains: not the face, not the face
+  ; used to determine which channels the user is in
   (#"#.*?/([^/\s]+).*?:\s*(.*)" [_ chan topic]
     (let [chan (str "#" (.trim chan))]
       (cond
@@ -85,14 +85,14 @@
           (forward ":IFMUD 332 " (get-state :nick) " " chan " :" topic))
         :else (forward ":[" chan "] PRIVMSG &channels :Joined."))))
 
-  ;channel departure message
+  ; channel departure message
   (#"You are no longer on (.*)\." [_ chan]
     (cond
       ((get-state :channels) chan) (do
         (forward ":" (get-state :nick) " PART " chan))
       :else (forward ":[" chan "] PRIVMSG &channels :Parted.")))
 
-  ;targeted channel message - [foo] Someone says (to SomeoneElse), "stuff"
+  ; targeted channel message - [foo] Someone says (to SomeoneElse), "stuff"
   (#"\[(.+?)\] (.+?) (?:says|asks|exclaims) \((?:to|of|at) (\w+)\), \"(.*)\"" [_ chan user target msg]
     (let [chan (str "#" chan)]
       (cond
@@ -101,7 +101,7 @@
           ((get-state :channels) chan) (forward ":" user " PRIVMSG " chan " :" target ": " msg)
           :else (forward ":[" chan "] PRIVMSG &channels :<" user "> " target ": " msg)))))
 
-  ;untargeted channel message - [foo] Someone says, "stuff"
+  ; untargeted channel message - [foo] Someone says, "stuff"
   (#"\[(.+?)\] (.+?) (?:says|asks|exclaims), \"(.*)\"" [_ chan user msg]
     (let [chan (str "#" chan)]
       (cond
@@ -110,7 +110,7 @@
           ((get-state :channels) chan) (forward ":" user " PRIVMSG " chan " :" msg)
           :else (forward ":[" chan "] PRIVMSG &channels :<" user "> " msg)))))
 
-  ;channel action
+  ; channel action
   (#"\[(.+?)\] (.+?) (.*)" [_ chan user action]
     (let [chan (str "#" chan)]
       (cond
@@ -119,9 +119,11 @@
           ((get-state :channels) chan) (forward ":" user " PRIVMSG " chan " :\u0001ACTION " action "\u0001")
           :else (forward ":[" chan "]<" user "> PRIVMSG &channels :\u0001ACTION " action "\u0001")))))
 
+  ; user joins channel
   (#"\[(.+?)\] \* (.+?) has joined the channel." [_ chan user]
     (forward ":" user " JOIN #" chan))
 
+  ; raw message on channel
   (#"\[(.+?)\] (.*)" [_ chan msg]
     (forward ":* PRIVMSG #" chan " :" msg))
 
