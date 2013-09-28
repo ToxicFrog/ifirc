@@ -46,8 +46,14 @@
   (#"PRIVMSG (#.+?) :(.*)" [_ chan msg]
     (forward chan " " msg))
 
-  (#"PRIVMSG &(?:IFMUD|channels) :(.*)" [_ msg]
+  (#"PRIVMSG &channels :(.*)" [_ msg]
     (forward msg))
+
+  (#"PRIVMSG &IFMUD :\\(.*)" [_ msg]
+    (forward msg))
+
+  (#"PRIVMSG &IFMUD :(.*)" [_ msg]
+    (forward "\"" msg))
 
   (#".*" [line]
     (reply "[???] " line)))
