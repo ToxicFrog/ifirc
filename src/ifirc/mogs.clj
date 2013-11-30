@@ -22,9 +22,17 @@
   (#"QUIT :.*" [_]
     (forward "quit"))
 
-  (#"JOIN (.*)" [_ chan]
-    (reply ":" (get-state :nick) " JOIN " chan)
-    (set-state :channels (conj (get-state :channels) chan)))
+  (#"JOIN (.*)" [_ chans]
+    (println (get-state :nick))
+    (println (get-state :channels))
+    (->> (clojure.string/split chans #",")
+         (map clojure.string/trim)
+         (remove empty?)
+         (map (fn [chan]
+                (reply ":" (get-state :nick) " JOIN " chan)
+                (set-state :channels (conj (get-state :channels) chan))))
+         dorun)
+    (println (get-state :channels)))
 
   (#"PART (.*)" [_ chan]
     (reply ":" (get-state :nick) " PART " chan)
@@ -55,6 +63,12 @@
   (#"PRIVMSG &IFMUD :\\(.*)" [_ msg]
     (forward msg))
 
+  (#"PRIVMSG &IFMUD :\u0001ACTION (.*)\u0001" [_ action]
+    (forward " :" action))
+
+  (#"PRIVMSG &IFMUD :(\w+): (.*)" [_  target msg]
+    (forward ".." target " " msg))
+
   (#"PRIVMSG &IFMUD :(.*)" [_ msg]
     (forward "\"" msg))
 
@@ -63,8 +77,10 @@
 
 (defmogs from-mud
   (#"Login Succeeded" [_]
+    (set-state :channels #{})
     (reply "lounge")
     (reply "@listc -member")
+    (forward ":IFMUD 001 " (get-state :nick) " :Welcome to ifMUD!")
     (forward ":IFMUD 376 " (get-state :nick) " :End of MOTD")
     (forward ":" (get-state :nick) " JOIN &IFMUD")
     (forward ":" (get-state :nick) " JOIN &channels"))
@@ -99,28 +115,22 @@
   (#"\[(.+?)\] (.+?) (?:says|asks|exclaims) \((?:to|of|at) (\w+)\), \"(.*)\"" [_ chan user target msg]
     (let [chan (str "#" chan)]
       (cond
-        (= user (get-state :nick)) true
-        :else (cond
-          ((get-state :channels) chan) (forward ":" user " PRIVMSG " chan " :" target ": " msg)
-          :else (forward ":[" chan "] PRIVMSG &channels :<" user "> " target ": " msg)))))
+        ((get-state :channels) chan) (forward ":" user " PRIVMSG " chan " :" target ": " msg)
+        :else (forward ":[" chan "] PRIVMSG &channels :<" user "> " target ": " msg))))
 
   ; untargeted channel message - [foo] Someone says, "stuff"
   (#"\[(.+?)\] (.+?) (?:says|asks|exclaims), \"(.*)\"" [_ chan user msg]
     (let [chan (str "#" chan)]
       (cond
-        (= user (get-state :nick)) true
-        :else (cond
-          ((get-state :channels) chan) (forward ":" user " PRIVMSG " chan " :" msg)
-          :else (forward ":[" chan "] PRIVMSG &channels :<" user "> " msg)))))
+        ((get-state :channels) chan) (forward ":" user " PRIVMSG " chan " :" msg)
+        :else (forward ":[" chan "] PRIVMSG &channels :<" user "> " msg))))
 
   ; channel action
   (#"\[(.+?)\] (.+?) (.*)" [_ chan user action]
     (let [chan (str "#" chan)]
       (cond
-        (= user (get-state :nick)) true
-        :else (cond
-          ((get-state :channels) chan) (forward ":" user " PRIVMSG " chan " :\u0001ACTION " action "\u0001")
-          :else (forward ":[" chan "]<" user "> PRIVMSG &channels :\u0001ACTION " action "\u0001")))))
+        ((get-state :channels) chan) (forward ":" user " PRIVMSG " chan " :\u0001ACTION " action "\u0001")
+        :else (forward ":[" chan "] PRIVMSG &channels :\u0001ACTION " user " " action "\u0001"))))
 
   ; user joins channel
   (#"\[(.+?)\] \* (.+?) has joined the channel." [_ chan user]
