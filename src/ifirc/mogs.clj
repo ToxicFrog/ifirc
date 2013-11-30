@@ -3,6 +3,10 @@
         [ifirc.mogrify]))
 
 (defmogs from-irc
+  ; ignore capability requests from ZNC
+  (#"CAP .*" [_]
+    true)
+  
   (#"NICK (.*)" [_ nick]
     (let [state (assoc (get-state) :nick nick :channels #{})]
       (println state)
