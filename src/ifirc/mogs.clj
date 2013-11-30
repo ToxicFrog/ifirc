@@ -8,17 +8,16 @@
     true)
   
   (#"NICK (.*)" [_ nick]
-    (let [state (assoc (get-state) :nick nick :channels #{})]
-      (println state)
-      (cond
-        (:pass state) (forward "connect " nick " " (:pass state)))
-      (set-state state)))
+    (set-state :nick nick)
+    (println (get-state))
+    (if (get-state :pass)
+      (forward "connect " (get-state :nick) " " (get-state :pass))))
 
   (#"PASS (.*)" [_ pass]
-    (let [state (assoc (get-state) :pass pass :channels #{})]
-      (cond
-        (:nick state) (forward "connect " (:nick state) " " pass))
-      (set-state state)))
+    (set-state :pass pass)
+    (println (get-state))
+    (if (get-state :nick)
+      (forward "connect " (get-state :nick) " " (get-state :pass))))
 
   (#"QUIT :.*" [_]
     (forward "quit"))
