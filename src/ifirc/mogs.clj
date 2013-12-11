@@ -93,17 +93,11 @@
   (#"#\d+ \[[^\]]+\].*" [line]
     (forward ":* PRIVMSG &IFMUD :" line))
 
-  ; channel departure message
-  (#"You are no longer on (.*)\." [_ chan]
-    (cond
-      ((get-state :channels) chan) (do
-        (forward ":" (get-state :nick) " PART " chan))
-      :else (forward ":[" chan "] PRIVMSG &channels :Parted.")))
-
   ; targeted channel message - [foo] Someone says (to SomeoneElse), "stuff"
   (#"\[(.+?)\] (.+?) (?:says|asks|exclaims) \((?:to|of|at) (\w+)\), \"(.*)\"" [_ chan user target msg]
     (let [chan (str "#" chan)]
       (cond
+        (= user (get-state :nick)) true ; eat messages from the user
         ((get-state :channels) chan) (forward ":" user " PRIVMSG " chan " :" target ": " msg)
         :else (forward ":[" chan "] PRIVMSG &channels :<" user "> " target ": " msg))))
 
@@ -111,6 +105,7 @@
   (#"\[(.+?)\] (.+?) (?:says|asks|exclaims), \"(.*)\"" [_ chan user msg]
     (let [chan (str "#" chan)]
       (cond
+        (= user (get-state :nick)) true ; eat messages from the user
         ((get-state :channels) chan) (forward ":" user " PRIVMSG " chan " :" msg)
         :else (forward ":[" chan "] PRIVMSG &channels :<" user "> " msg))))
 
@@ -119,7 +114,7 @@
     (let [chan (str "#" chan)]
       (cond
         ((get-state :channels) chan) (forward ":" user " PRIVMSG " chan " :\u0001ACTION " action "\u0001")
-        :else (forward ":[" chan "] PRIVMSG &channels :\u0001ACTION " user " " action "\u0001"))))
+        :else (forward ":[" chan "/" user "] PRIVMSG &channels :\u0001ACTION " action "\u0001"))))
 
   ; user joins channel
   (#"\[(.+?)\] \* (.+?) has joined the channel." [_ chan user]
@@ -137,9 +132,9 @@
   (#"(\w+) (?:says|asks|exclaims), \"(.*)\"" [_ user msg]
     (forward ":" user " PRIVMSG &IFMUD :" msg))
   
-  ; your message in local
+  ; your message in local - eat these, since the IRC client already echoes them
   (#"You (say|ask|exclaim), \"(.*)\"" [_ _ msg]
-    (forward ":" (get-state :nick) " PRIVMSG &IFMUD :" msg))
+    true)
   
   ; all other MUD traffic
   (#".*" [line]
