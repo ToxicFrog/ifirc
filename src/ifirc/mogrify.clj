@@ -90,7 +90,7 @@
   "The upstream-most handler in the mogrifier half connected to the client. Creates a connection to the server on
   (connect), and forwards messages to it."
   (connect [this]
-    (let [to-server (start-client :blocking :string (new SplitLines) (new Print "[SV] ") (new MogClientConnector (get-connection)))]
+    (let [to-server (start-client :blocking :string (new SplitLines) (new MogClientConnector (get-connection)))]
       (assoc this :server (open to-server host port))))
   (upstream [this msg]
     (write (:server this) msg))
@@ -104,6 +104,5 @@
   (start-server listen :blocking
     :string
     (new SplitLines)
-    (new Print "[CL] ")
     (new Mogrifier up-mogs down-mogs)
     (new MogServerConnector host port)))
