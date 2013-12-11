@@ -64,19 +64,27 @@
 
 (defhandler Mogrifier [up-mogs down-mogs]
   "Bidirectional text filter. up-mogs and down-mogs should be mogrification lists created with (defmogs)."
-  (upstream [this msg]
+  (upstream [this msg] ; messages to the MUD server
     (binding [*forward* send-up
               *reply* send-down
               *state* this]
       (domogs (var-get up-mogs) msg)
       *state*))
-  (downstream [this msg]
+  (downstream [this msg] ; messages to the IRC client
     (binding [*forward* send-down
               *reply* send-up
               *state* this]
       (domogs (var-get down-mogs) msg)
       *state*)))
 
+(defhandler IFMUDRawLogger []
+  "Sits between the main mogrifier and the MUD. Turns MUD messages into RAW messages to the IRC client for debugging."
+  (upstream [this msg]
+    (send-up msg)
+    (send-down (str "RAW >> " msg)))
+  (downstream [this msg]
+    (send-down msg)
+    (send-down (str "RAW << " msg))))
 
 (defhandler MogClientConnector [client]
   "The upstream-most handler in the mogrifier half connected to the server. Forwards messages to the client half."
@@ -105,4 +113,5 @@
     :string
     (new SplitLines)
     (new Mogrifier up-mogs down-mogs)
+    (new IFMUDRawLogger)
     (new MogServerConnector host port)))

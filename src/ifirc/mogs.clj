@@ -83,10 +83,15 @@
     (forward ":IFMUD 001 " (get-state :nick) " :Welcome to ifMUD!")
     (forward ":IFMUD 376 " (get-state :nick) " :End of MOTD")
     (forward ":" (get-state :nick) " JOIN &IFMUD")
+    (forward ":" (get-state :nick) " JOIN &raw")
     (forward ":" (get-state :nick) " JOIN &channels"))
 
   (#"It reflects pings to keep someone from disconnecting." [_]
     true)
+  
+  ; rawlog message
+  (#"^RAW (.+?) (.*)" [_ nick message]
+    (forward ":" nick " PRIVMSG &raw :" message))
 
   ; bb message
   ; #666 [alt/satan] From: The Pope
