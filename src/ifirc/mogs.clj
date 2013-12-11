@@ -93,17 +93,6 @@
   (#"#\d+ \[[^\]]+\].*" [line]
     (forward ":* PRIVMSG &IFMUD :" line))
 
-  ; channel topic line from @joinc or @listc
-  ; #alt/random/markov-chains: not the face, not the face
-  ; used to determine which channels the user is in
-  (#"#.*?/([^/\s]+).*?:\s*(.*)" [_ chan topic]
-    (let [chan (str "#" (.trim chan))]
-      (cond
-        ((get-state :channels) chan) (do
-          (forward ":" (get-state :nick) " JOIN " chan)
-          (forward ":IFMUD 332 " (get-state :nick) " " chan " :" topic))
-        :else (forward ":[" chan "] PRIVMSG &channels :" topic))))
-
   ; channel departure message
   (#"You are no longer on (.*)\." [_ chan]
     (cond
