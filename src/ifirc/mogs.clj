@@ -119,7 +119,7 @@
     (let [chan (str "#" chan)]
       (cond
         ((get-state :channels) chan) (forward ":" user " PRIVMSG " chan " :\u0001ACTION " action "\u0001")
-        :else (forward ":[" chan "/" user "] PRIVMSG &channels :\u0001ACTION " action "\u0001"))))
+        :else (forward ":[" chan "] PRIVMSG &channels :\u0001ACTION " user " " action "\u0001"))))
 
   ; user joins channel
   (#"\[(.+?)\] \* (.+?) has joined the channel." [_ chan user]

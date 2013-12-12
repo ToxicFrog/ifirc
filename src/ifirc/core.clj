@@ -1,7 +1,6 @@
 (ns ifirc.core
   (:gen-class)
-  (:use [clojure.string :only [split-lines]]
-        [ifirc.mogrify]
+  (:use [ifirc.mogrify]
         [ifirc.mogs])
   (:import [saturnine.core.internal Print]))
 
