@@ -114,6 +114,14 @@
         ((get-state :channels) chan) (forward ":" user " PRIVMSG " chan " :" msg)
         :else (forward ":[" chan "] PRIVMSG &channels :<" user "> " msg))))
 
+  ; channel join/part
+  (#"\[(.+?)\] \* (.+?) has (joined|left) the channel\." [_ chan user action]
+    (let [chan (str "#" chan)
+          action (if (= action "joined") "JOIN" "PART")]
+      (cond
+        ((get-state :channels) chan) (forward ":" user " " action " " chan)
+        :else true)))
+
   ; channel action
   (#"\[(.+?)\] (.+?) (.*)" [_ chan user action]
     (let [chan (str "#" chan)]
