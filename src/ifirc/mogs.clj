@@ -138,7 +138,7 @@
     (forward ":" user " PRIVMSG &IFMUD :" msg))
   
   ; your message in local - eat these, since the IRC client already echoes them
-  (#"You (say|ask|exclaim), \"(.*)\"" [_ _ msg]
+  (#"You (?:say|ask|exclaim).*" [_ msg]
     true)
   
   ; all other MUD traffic
