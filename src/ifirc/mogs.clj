@@ -45,7 +45,7 @@
     true)
 
   (#"PING (.*)" [_ time]
-    (forward "x ping reflector")
+    (forward "qidle")
     (reply ":IFMUD PONG IFMUD :" time))
 
   (#"PRIVMSG (#.+?) :\u0001ACTION (.*)\u0001" [_ chan action]
@@ -86,9 +86,6 @@
     (forward ":" (get-state :nick) " JOIN &raw")
     (forward ":" (get-state :nick) " JOIN &channels"))
 
-  (#"It reflects pings to keep someone from disconnecting." [_]
-    true)
-  
   ; rawlog message
   (#"^RAW (.+?) (.*)" [_ nick message]
     (forward ":" nick " PRIVMSG &raw :" message))
