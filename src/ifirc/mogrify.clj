@@ -48,11 +48,11 @@
 (def ^:dynamic *reply* send-down)
 (def ^:dynamic *state* {})
 
-(defn reply [& rest]
-  (*reply* (apply str rest)))
+(defn to-irc [& rest]
+  (send-down (apply str rest)))
 
-(defn forward [& rest]
-  (*forward* (apply str rest)))
+(defn to-mud [& rest]
+  (send-up (apply str rest)))
 
 (defn get-state
   ([] *state*)
@@ -65,15 +65,11 @@
 (defhandler Mogrifier [up-mogs down-mogs]
   "Bidirectional text filter. up-mogs and down-mogs should be mogrification lists created with (defmogs)."
   (upstream [this msg] ; messages to the MUD server
-    (binding [*forward* send-up
-              *reply* send-down
-              *state* this]
+    (binding [*state* this]
       (domogs (var-get up-mogs) msg)
       *state*))
   (downstream [this msg] ; messages to the IRC client
-    (binding [*forward* send-down
-              *reply* send-up
-              *state* this]
+    (binding [*state* this]
       (domogs (var-get down-mogs) msg)
       *state*)))
 
