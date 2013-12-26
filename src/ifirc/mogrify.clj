@@ -84,6 +84,8 @@
 
 (defhandler MogClientConnector [client]
   "The upstream-most handler in the mogrifier half connected to the server. Forwards messages to the client half."
+  (error [this err]
+    (println "cl!error" this err))
   (upstream [this msg]
     (write client msg))
   (disconnect [this]
@@ -93,6 +95,8 @@
 (defhandler MogServerConnector [host port]
   "The upstream-most handler in the mogrifier half connected to the client. Creates a connection to the server on
   (connect), and forwards messages to it."
+  (error [this err]
+    (println "sv!error" this err))
   (connect [this]
     (let [to-server (start-client :blocking :string (new SplitLines) (new MogClientConnector (get-connection)))]
       (assoc this :server (open to-server host port))))

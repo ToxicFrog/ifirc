@@ -9,13 +9,13 @@
   
   (#"NICK (.*)" [_ nick]
     (set-state :nick nick)
-    (println (get-state))
+    (println "Got nick!" (get-state))
     (if (get-state :pass)
       (to-mud "connect " (get-state :nick) " " (get-state :pass))))
 
   (#"PASS (.*)" [_ pass]
     (set-state :pass pass)
-    (println (get-state))
+    (println "Got pass!" (get-state))
     (if (get-state :nick)
       (to-mud "connect " (get-state :nick) " " (get-state :pass))))
 
@@ -78,6 +78,7 @@
 (defmogs from-mud
   (#"Login Succeeded" [_]
     (set-state :channels #{})
+    (println "MUD accepted login!" (get-state))
     (to-mud "lounge")
     (to-irc ":IFMUD 001 " (get-state :nick) " :Welcome to ifMUD!")
     (to-irc ":IFMUD 376 " (get-state :nick) " :End of MOTD")
