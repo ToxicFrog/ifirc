@@ -77,7 +77,8 @@
   "Sits between the main mogrifier and the MUD. Turns MUD messages into RAW messages to the IRC client for debugging."
   (upstream [this msg]
     (send-up msg)
-    (send-down (str "RAW >> " msg)))
+    (if (not= "qidle" msg)
+      (send-down (str "RAW >> " msg))))
   (downstream [this msg]
     (send-down msg)
     (send-down (str "RAW << " msg))))
