@@ -6,7 +6,7 @@
   ; ignore capability requests from ZNC
   (#"CAP .*" [_]
     true)
-  
+
   (#"NICK (.*)" [_ nick]
     (set-state :nick nick)
     (println "Got nick!" (get-state))
@@ -141,11 +141,11 @@
   ; user message in local
   (#"(.+?) (?:says|asks|exclaims), \"(.*)\"" [_ user msg]
     (to-irc ":" user " PRIVMSG &IFMUD :" msg))
-  
+
   ; your message in local - eat these, since the IRC client already echoes them
-  (#"You (?:say|ask|exclaim).*" [_ msg]
+  (#"You (?:say|ask|exclaim).*" [_]
     true)
-  
+
   ; all other MUD traffic
   (#".*" [line]
     (to-irc ":* PRIVMSG &IFMUD :" line)))
