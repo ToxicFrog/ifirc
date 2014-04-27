@@ -2,6 +2,24 @@
   (:use [saturnine.handler]
         [ifirc.mogrify]))
 
+(defn login [user pass]
+  (println "Logging in to MUD as " user)
+  (to-mud "connect " user " " pass))
+
+(defn report-who [chan users]
+  (dorun (map
+           #(to-irc ":IFMUD " 352 " "
+                    (get-state :nick) " "
+                    chan " "
+                    %1 " ifmud.user IFMUD "
+                    %1 " H :0 " %1)
+           users))
+  (to-irc ":IFMUD " 315 " " (get-state :nick) " " chan " :End of WHO."))
+
+(defn report-names [chan users]
+  (to-irc ":IFMUD 353 " (get-state :nick) " = " chan " :" (apply str (interpose " " users)))
+  (to-irc ":IFMUD 366 " (get-state :nick) " " chan " :No more NAMES."))
+
 (defmogs from-irc
   ; ignore capability requests from ZNC
   (#"CAP .*" [_]
@@ -9,40 +27,41 @@
 
   (#"NICK (.*)" [_ nick]
     (set-state :nick nick)
-    (println "Got nick!" (get-state))
     (if (get-state :pass)
-      (to-mud "connect " (get-state :nick) " " (get-state :pass))))
+      (login (get-state :nick) (get-state :pass))))
 
   (#"PASS (.*)" [_ pass]
     (set-state :pass pass)
-    (println "Got pass!" (get-state))
     (if (get-state :nick)
-      (to-mud "connect " (get-state :nick) " " (get-state :pass))))
+      (login (get-state :nick) (get-state :pass))))
 
   (#"QUIT :.*" [_]
     (to-mud "quit"))
 
   (#"JOIN (.*)" [_ chans]
-    (println (get-state :nick))
-    (println (get-state :channels))
     (->> (clojure.string/split chans #",")
          (map clojure.string/trim)
          (remove empty?)
          (map (fn [chan]
                 (to-irc ":" (get-state :nick) " JOIN " chan)
+                (report-names chan (get-state :players))
                 (set-state :channels (conj (get-state :channels) chan))))
          dorun)
-    (println (get-state :channels)))
+    (println "Joined channels: " (get-state :channels)))
 
   (#"PART (.*)" [_ chan]
     (to-irc ":" (get-state :nick) " PART " chan)
     (set-state :channels (disj (get-state :channels) chan)))
 
-  (#"WHO .*" [_]  ; FIXME - there needs to be a proper API for eating unwanted messages
-    true)
+  (#"WHO (.*)" [_ chan]
+    (report-who chan (get-state :players)))
 
-  (#"MODE .*" [_]
-    true)
+  (#"NAMES (.*)" [_ chan]
+    (report-names chan (get-state :players)))
+
+  (#"MODE (.*)" [_ chan]
+    (to-irc ":IFMUD 324 " (get-state :nick) " " chan " +ntr")
+    (to-irc ":IFMUD 329 " (get-state :nick) " " chan " 0"))
 
   (#"PING (.*)" [_ time]
     (to-mud "qidle")
