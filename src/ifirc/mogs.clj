@@ -92,7 +92,7 @@
        (System/exit 1))))
 
   ; rawlog message
-  (#"^RAW (.+?) (.*)" [_ nick message]
+  (#"RAW (.+?) (.*)" [_ nick message]
     (to-irc ":" nick " PRIVMSG &raw :" message))
 
   ; local player list
@@ -108,7 +108,7 @@
     (to-irc ":* PRIVMSG &IFMUD :" line))
 
   ; targeted channel message - [foo] Someone says (to SomeoneElse), "stuff"
-  (#"\[(.+?)\] (.+?) (?:says|asks|exclaims) \((?:to|of|at) (\w+)\), \"(.*)\"" [_ chan user target msg]
+  (#"\[(\S+)\] (\S+) (?:says|asks|exclaims) \((?:to|of|at) (\S+)\), \"(.*)\"" [_ chan user target msg]
     (let [chan (str "#" chan)]
       (cond
         (= user (get-state :nick)) true ; eat messages from the user
@@ -116,7 +116,7 @@
         :else (to-irc ":[" chan "] PRIVMSG &channels :<" user "> " target ": " msg))))
 
   ; untargeted channel message - [foo] Someone says, "stuff"
-  (#"\[(.+?)\] (.+?) (?:says|asks|exclaims), \"(.*)\"" [_ chan user msg]
+  (#"\[(\S+)\] (\S+) (?:says|asks|exclaims), \"(.*)\"" [_ chan user msg]
     (let [chan (str "#" chan)]
       (cond
         (= user (get-state :nick)) true ; eat messages from the user
@@ -124,7 +124,7 @@
         :else (to-irc ":[" chan "] PRIVMSG &channels :<" user "> " msg))))
 
   ; channel join/part
-  (#"\[(.+?)\] \* (.+?) has (joined|left) the channel\." [_ chan user action]
+  (#"\[(\S+)\] \* (\S+) has (joined|left) the channel\." [_ chan user action]
     (let [chan (str "#" chan)
           action (if (= action "joined") "JOIN" "PART")]
       (cond
@@ -132,26 +132,26 @@
         :else true)))
 
   ; channel action
-  (#"\[(.+?)\] (.+?) (.*)" [_ chan user action]
+  (#"\[(\S+)\] (\S+) (.*)" [_ chan user action]
     (let [chan (str "#" chan)]
       (cond
         ((get-state :channels) chan) (to-irc ":" user " PRIVMSG " chan " :\u0001ACTION " action "\u0001")
         :else (to-irc ":[" chan "] PRIVMSG &channels :\u0001ACTION " user " " action "\u0001"))))
 
   ; user joins channel
-  (#"\[(.+?)\] \* (.+?) has joined the channel." [_ chan user]
+  (#"\[(\S+)\] \* (\S+) has joined the channel." [_ chan user]
     (to-irc ":" user " JOIN #" chan))
 
   ; raw message on channel
-  (#"\[(.+?)\] (.*)" [_ chan msg]
+  (#"\[(\S+)\] (.*)" [_ chan msg]
     (to-irc ":* PRIVMSG #" chan " :" msg))
 
   ; targeted user message in local
-  (#"(.+?) (?:says|asks|exclaims) \((?:to|of|at) (\w+)\), \"(.*)\"" [_ user target msg]
+  (#"(\S+) (?:says|asks|exclaims) \((?:to|of|at) (\S+)\), \"(.*)\"" [_ user target msg]
     (to-irc ":" user " PRIVMSG &IFMUD :" target ": " msg))
 
   ; user message in local
-  (#"(.+?) (?:says|asks|exclaims), \"(.*)\"" [_ user msg]
+  (#"(\S+) (?:says|asks|exclaims), \"(.*)\"" [_ user msg]
     (to-irc ":" user " PRIVMSG &IFMUD :" msg))
 
   ; your message in local - eat these, since the IRC client already echoes them
