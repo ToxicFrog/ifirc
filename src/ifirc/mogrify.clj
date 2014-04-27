@@ -68,11 +68,11 @@
   (error [this err]
     (send-down (str ":!! PRIVMSG &raw :" err)))
   (upstream [this msg] ; messages to the MUD server
-    (binding [*state* this]
+    (binding [*state* (if (empty? *state*) this *state*)]
       (domogs (var-get up-mogs) msg)
       *state*))
   (downstream [this msg] ; messages to the IRC client
-    (binding [*state* this]
+    (binding [*state* (if (empty? *state*) this *state*)]
       (domogs (var-get down-mogs) msg)
       *state*)))
 
@@ -109,7 +109,7 @@
 (defn start-mogrifier [listen host port up-mogs down-mogs]
   "Start a proxy for bidirectional line-oriented text filtering based on the defmogs up-mogs and down-mogs. FIXME:
   currently no support for connect/disconnect events in user code."
-  (start-server listen :blocking
+  (start-server listen :nonblocking
     :string
     (new SplitLines)
     (new Mogrifier up-mogs down-mogs)

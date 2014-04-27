@@ -78,17 +78,29 @@
 (defmogs from-mud
   (#"Login Succeeded" [_]
     (set-state :channels #{})
-    (println "MUD accepted login!" (get-state))
-    (to-mud "lounge")
-    (to-irc ":IFMUD 001 " (get-state :nick) " :Welcome to ifMUD!")
-    (to-irc ":IFMUD 376 " (get-state :nick) " :End of MOTD")
-    (to-irc ":" (get-state :nick) " JOIN &IFMUD")
-    (to-irc ":" (get-state :nick) " JOIN &raw")
-    (to-irc ":" (get-state :nick) " JOIN &channels"))
+    (println "Login successful." (get-state))
+    (if (get-state :nick)
+     (do
+       (to-mud "lounge")
+       (to-irc ":IFMUD 001 " (get-state :nick) " :Welcome to ifMUD!")
+       (to-irc ":IFMUD 376 " (get-state :nick) " :End of MOTD")
+       (to-irc ":" (get-state :nick) " JOIN &IFMUD")
+       (to-irc ":" (get-state :nick) " JOIN &raw")
+       (to-irc ":" (get-state :nick) " JOIN &channels"))
+     (do
+       (println "Error: no valid nick after login, bailing")
+       (System/exit 1))))
 
   ; rawlog message
   (#"^RAW (.+?) (.*)" [_ nick message]
     (to-irc ":" nick " PRIVMSG &raw :" message))
+
+  ; local player list
+  (#"Players: (.*)" [_ plist]
+    (let [players (clojure.string/split plist #",\s*")]
+      (println "Got local player list: " players)
+      (set-state :players players)
+      (report-names "&IFMUD" players)))
 
   ; bb message
   ; #666 [alt/satan] From: The Pope
