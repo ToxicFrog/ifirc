@@ -154,6 +154,24 @@
   (#"(\S+) (?:says|asks|exclaims), \"(.*)\"" [_ user msg]
     (to-irc ":" user " PRIVMSG &IFMUD :" msg))
 
+  ; user disconnects
+  (#"</(\S+)> (.*)" [_ user msg]
+    (to-irc ":" user " PART &IFMUD :" msg))
+  (#"(\S+) has disconnected\." [_ user]
+    (to-irc ":" user " PART &IFMUD :disconnect" ))
+
+  ; user connects
+  (#"<(\S+)> (.*)" [_ user msg]
+    (to-irc ":" user " JOIN &IFMUD"))
+
+  ; user | action
+  (#"(\S+) \| (.*)" [_ user msg]
+    (to-irc ":" user " PRIVMSG &IFMUD :\u0001ACTION | " msg "\u0001"))
+
+  ; user action -- do we actually want this mapping?
+  ;(#"(\S+) (.*)\." [_ user msg]
+  ;  (to-irc ":" user " PRIVMSG &IFMUD :\u0001ACTION " msg ".\u0001"))
+
   ; your message in local - eat these, since the IRC client already echoes them
   (#"You (?:say|ask|exclaim).*" [_]
     true)
