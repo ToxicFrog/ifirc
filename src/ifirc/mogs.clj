@@ -154,6 +154,7 @@
   (#"\[(\S+)\] (\S+) (.*)" [_ chan user action]
     (let [chan (str "#" chan)]
       (cond
+        (= user (get-state :nick)) true
         ((get-state :channels) chan) (to-irc ":" user " PRIVMSG " chan " :\u0001ACTION " action "\u0001")
         :else (to-irc ":[" chan "] PRIVMSG &channels :\u0001ACTION " user " " action "\u0001"))))
 
