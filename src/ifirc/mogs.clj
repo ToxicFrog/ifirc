@@ -38,6 +38,7 @@
   (#"QUIT :.*" [_]
     (to-mud "quit"))
 
+  ; TODO: use @statc <channel> to get channel topic and userlist
   (#"JOIN (.*)" [_ chans]
     (->> (clojure.string/split chans #",")
          (map clojure.string/trim)
@@ -157,10 +158,6 @@
         (= user (get-state :nick)) true
         ((get-state :channels) chan) (to-irc ":" user " PRIVMSG " chan " :\u0001ACTION " action "\u0001")
         :else (to-irc ":[" chan "] PRIVMSG &channels :\u0001ACTION " user " " action "\u0001"))))
-
-  ; user joins channel
-  (#"\[(\S+)\] \* (\S+) has joined the channel." [_ chan user]
-    (to-irc ":" user " JOIN #" chan))
 
   ; raw message on channel
   (#"\[(\S+)\] (.*)" [_ chan msg]
