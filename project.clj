@@ -1,4 +1,4 @@
-(defproject ifirc "0.1.0-SNAPSHOT"
+(defproject ifirc "0.1.0"
   :description "A bridge between an IRC client and IFMUD"
   :url "telnet://ifmud.port4000.com:4000/"
   :license {:name "MIT License"
