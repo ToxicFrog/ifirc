@@ -57,8 +57,13 @@
   ([state] (set! *state* state))
   ([key value] (set! *state* (assoc *state* key value))))
 
+(defn chan-seq [chan]
+  (take-while
+    some?
+    (repeatedly #(<!! chan))))
+
 (defn mogrifier [incoming irc-mogs mud-mogs]
-  (doseq [[id msg] (repeatedly #(<!! incoming))]
+  (doseq [[id msg] (chan-seq incoming)]
     (case id
       :irc (domogs irc-mogs msg)
       :mud (do
