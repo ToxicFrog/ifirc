@@ -100,6 +100,11 @@
     (to-irc "[???] " line)))
 
 (defmogs from-mud
+  (#"Login Failed" [_]
+    (log/infof "Login as %s failed, disconnecting user." (get-state :nick))
+    (to-irc ":IFMUD 464 " (get-state :nick) " :Login failed")
+    :exit)
+
   (#"Login Succeeded" [_]
     (set-state :channels #{})
     (log/infof "Login as %s successful." (get-state :nick))
@@ -114,7 +119,7 @@
        (to-irc ":" (get-state :nick) " JOIN &channels"))
      (do
        (log/error "Error: no valid nick after login, bailing")
-       (System/exit 1))))
+       :exit)))
 
   ; local player list
   (#"Players: (.*)" [_ plist]
