@@ -3,7 +3,7 @@
             [taoensso.timbre :as log]))
 
 (defn- login [user pass]
-  (println "Logging in to MUD as" user)
+  (log/info "Logging in to MUD as" user)
   (to-mud "connect " user " " pass))
 
 (defn- report-who [chan users]
@@ -48,7 +48,7 @@
                 (report-names chan (get-state :players))
                 (set-state :channels (conj (get-state :channels) chan))))
          dorun)
-    (println "Joined channels:" (get-state :channels)))
+    (log/debug "Joined channels:" (get-state :channels)))
 
   (#"PART (.*)" [_ chan]
     (to-irc ":" (get-state :nick) " PART " chan)
@@ -98,7 +98,8 @@
 (defmogs from-mud
   (#"Login Succeeded" [_]
     (set-state :channels #{})
-    (println "Login successful." (get-state))
+    (log/infof "Login as %s successful." (get-state :nick))
+    (log/debug "State:" (get-state))
     (if (get-state :nick)
      (do
        ;(to-mud "lounge")
@@ -114,7 +115,7 @@
   ; local player list
   (#"Players: (.*)" [_ plist]
     (let [players (clojure.string/split plist #",\s*")]
-      (println "Got local player list:" players)
+      (log/debug "Got local player list: " players)
       (set-state :players players)
       (report-names "&IFMUD" players)))
 
