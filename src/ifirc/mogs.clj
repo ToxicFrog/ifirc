@@ -1,12 +1,12 @@
 (ns ifirc.mogs
-  (:use [saturnine.handler]
-        [ifirc.mogrify]))
+  (:require [ifirc.mogrify :refer :all]
+            [taoensso.timbre :as log]))
 
-(defn login [user pass]
+(defn- login [user pass]
   (println "Logging in to MUD as " user)
   (to-mud "connect " user " " pass))
 
-(defn report-who [chan users]
+(defn- report-who [chan users]
   (dorun (map
            #(to-irc ":IFMUD " 352 " "
                     (get-state :nick) " "
@@ -16,7 +16,7 @@
            users))
   (to-irc ":IFMUD " 315 " " (get-state :nick) " " chan " :End of WHO."))
 
-(defn report-names [chan users]
+(defn- report-names [chan users]
   (to-irc ":IFMUD 353 " (get-state :nick) " = " chan " :" (apply str (interpose " " users)))
   (to-irc ":IFMUD 366 " (get-state :nick) " " chan " :No more NAMES."))
 
@@ -101,19 +101,15 @@
     (println "Login successful." (get-state))
     (if (get-state :nick)
      (do
-       (to-mud "lounge")
+       ;(to-mud "lounge")
        (to-irc ":IFMUD 001 " (get-state :nick) " :Welcome to ifMUD!")
        (to-irc ":IFMUD 376 " (get-state :nick) " :End of MOTD")
        (to-irc ":" (get-state :nick) " JOIN &IFMUD")
        (to-irc ":" (get-state :nick) " JOIN &raw")
        (to-irc ":" (get-state :nick) " JOIN &channels"))
      (do
-       (println "Error: no valid nick after login, bailing")
+       (log/error "Error: no valid nick after login, bailing")
        (System/exit 1))))
-
-  ; rawlog message
-  (#"RAW (.+?) (.*)" [_ nick message]
-    (to-irc ":" nick " PRIVMSG &raw :" message))
 
   ; local player list
   (#"Players: (.*)" [_ plist]

@@ -4,5 +4,6 @@
   :license {:name "MIT License"
             :url "http://opensource.org/licenses/MIT"}
   :dependencies [[org.clojure/clojure "1.6.0"]
-                 [saturnine "0.3-SNAPSHOT"]]
+                 [org.clojure/core.async "0.1.301.0-deb34a-alpha"]
+                 [com.taoensso/timbre "3.1.6"]]
   :main ifirc.core)

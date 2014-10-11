@@ -1,8 +1,7 @@
 (ns ifirc.mogrify
-  (:use [saturnine.core]
-        [saturnine.handler]
-        [clojure.string :only [split-lines join]])
-  (:import [saturnine.core.internal Print]))
+  (:require
+    [taoensso.timbre :as log]
+    [clojure.core.async :as async :refer [<!!]]))
 
 (defmacro defmogs
   "Define a list of mogrifications to apply to a stream of lines of text.
@@ -26,7 +25,6 @@
   (let [mogs (map (partial apply defmog) mogs)]
     `(def ~name [~@mogs])))
 
-
 (defn domogs
   "Apply a list of mogrifications created with (defmogs) to a line of text.
 
@@ -35,24 +33,21 @@
   [mogs line]
   (some #(% line) mogs))
 
-
-(defhandler SplitLines []
-  "Splits multi-line messages into individual lines. Use after :string."
-  (upstream [this msg]
-    (dorun (map send-up (split-lines msg))))
-  (downstream [this msg]
-    (send-down (str msg "\n"))))
-
-
-(def ^:dynamic *forward* send-up)
-(def ^:dynamic *reply* send-down)
 (def ^:dynamic *state* {})
+(def ^:dynamic *irc-writer* nil)
+(def ^:dynamic *mud-writer* nil)
 
-(defn to-irc [& rest]
-  (send-down (apply str rest)))
+(defn to-irc [& msg]
+  (log/trace (str "IRC " msg))
+  (.println *irc-writer* (apply str msg)))
 
-(defn to-mud [& rest]
-  (send-up (apply str rest)))
+(defn rawlog [dir msg]
+  (to-irc ":" dir " PRIVMSG &raw :" msg))
+
+(defn to-mud [& msg]
+  (log/trace (str "MUD " msg))
+  (.println *mud-writer* (apply str msg))
+  (rawlog "<<" (apply str msg)))
 
 (defn get-state
   ([] *state*)
@@ -62,56 +57,10 @@
   ([state] (set! *state* state))
   ([key value] (set! *state* (assoc *state* key value))))
 
-(defhandler Mogrifier [up-mogs down-mogs]
-  "Bidirectional text filter. up-mogs and down-mogs should be mogrification lists created with (defmogs)."
-  ; send errors to the rawlog
-  (error [this err]
-    (send-down (str ":!! PRIVMSG &raw :" err)))
-  (upstream [this msg] ; messages to the MUD server
-    (binding [*state* (if (empty? *state*) this *state*)]
-      (domogs (var-get up-mogs) msg)
-      *state*))
-  (downstream [this msg] ; messages to the IRC client
-    (binding [*state* (if (empty? *state*) this *state*)]
-      (domogs (var-get down-mogs) msg)
-      *state*)))
-
-(defhandler IFMUDRawLogger []
-  "Sits between the main mogrifier and the MUD. Turns MUD messages into RAW messages to the IRC client for debugging."
-  (upstream [this msg]
-    (send-up msg)
-    (if (not= "qidle" msg)
-      (send-down (str "RAW >> " msg))))
-  (downstream [this msg]
-    (send-down msg)
-    (send-down (str "RAW << " msg))))
-
-(defhandler MogClientConnector [client]
-  "The upstream-most handler in the mogrifier half connected to the server. Forwards messages to the client half."
-  (upstream [this msg]
-    (write client msg))
-  (disconnect [this]
-    (close client)))
-
-
-(defhandler MogServerConnector [host port]
-  "The upstream-most handler in the mogrifier half connected to the client. Creates a connection to the server on
-  (connect), and forwards messages to it."
-  (connect [this]
-    (let [to-server (start-client :blocking :string (new SplitLines) (new MogClientConnector (get-connection)))]
-      (assoc this :server (open to-server host port))))
-  (upstream [this msg]
-    (write (:server this) msg))
-  (disconnect [this]
-    (close (:server this))))
-
-
-(defn start-mogrifier [listen host port up-mogs down-mogs]
-  "Start a proxy for bidirectional line-oriented text filtering based on the defmogs up-mogs and down-mogs. FIXME:
-  currently no support for connect/disconnect events in user code."
-  (start-server listen :nonblocking
-    :string
-    (new SplitLines)
-    (new Mogrifier up-mogs down-mogs)
-    (new IFMUDRawLogger)
-    (new MogServerConnector host port)))
+(defn mogrifier [incoming irc-mogs mud-mogs]
+  (doseq [[id msg] (repeatedly #(<!! incoming))]
+    (case id
+      :irc (domogs irc-mogs msg)
+      :mud (do
+             (rawlog ">>" (apply str msg))
+             (domogs mud-mogs msg)))))
