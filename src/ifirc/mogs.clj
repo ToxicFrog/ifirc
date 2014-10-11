@@ -25,6 +25,10 @@
   (#"CAP .*" [_]
     true)
 
+  ; ignore USER command
+  (#"USER .*" [_]
+    true)
+
   (#"NICK (.*)" [_ nick]
     (set-state :nick nick)
     (if (get-state :pass)
