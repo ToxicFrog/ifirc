@@ -2,15 +2,11 @@
   (:gen-class)
   (:require
     [ifirc.net :refer :all]
-    [ifirc.mogs :refer :all]))
-
-; Main thread listens for incoming connections. When it gets one, it connects
-; to ifmud, and then spawns two threads for each socket plus a fifth for the
-; mogrifier, interconnected by sockets?
+    [ifirc.mogs :refer :all]
+    [ifirc.flags :refer :all]))
 
 (defn -main
   "Proxy between IRC and IFMUD"
-  [listen host port]
-  (let [listen (Integer. listen)
-        port   (Integer. port)]
-    (run-proxy listen host port from-irc from-mud)))
+  [& argv]
+  (binding [*options* (parse-opts argv)]
+    (run-proxy (*options* :listen) (*options* :mud-host) (*options* :mud-port) from-irc from-mud)))
