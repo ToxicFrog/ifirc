@@ -1,5 +1,6 @@
 (ns ifirc.mogs
   (:require [ifirc.mogrify :refer :all]
+            [ifirc.flags :refer [*options*]]
             [taoensso.timbre :as log]))
 
 (defn- login [user pass]
@@ -111,7 +112,8 @@
     (log/debug "State:" (get-state))
     (if (get-state :nick)
      (do
-       ;(to-mud "lounge")
+       (if-let [autoexec (*options* :autoexec)]
+         (to-mud autoexec))
        (to-irc ":IFMUD 001 " (get-state :nick) " :Welcome to ifMUD!")
        (to-irc ":IFMUD 376 " (get-state :nick) " :End of MOTD")
        (to-irc ":" (get-state :nick) " JOIN &IFMUD")
