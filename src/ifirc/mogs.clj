@@ -21,6 +21,17 @@
   (to-irc ":IFMUD 353 " (get-state :nick) " = " chan " :" (apply str (interpose " " users)))
   (to-irc ":IFMUD 366 " (get-state :nick) " " chan " :No more NAMES."))
 
+(defn- part-channels [channels]
+  (->> (clojure.string/split channels #",")
+       (map clojure.string/trim)
+       (remove empty?)
+       (remove #(= \& (first %))) ; skip channels starting with "&", like "&raw"
+       (map (fn [chan]
+              (if (*options* :autochan)
+                (to-mud "@leavec " chan))
+              (to-irc ":" (get-state :nick) " PART " chan)
+              (set-state :channels (disj (get-state :channels) chan))))))
+
 (defmogs from-irc
   ; ignore capability requests from ZNC
   (#"CAP .*" [_]
@@ -48,16 +59,20 @@
     (->> (clojure.string/split chans #",")
          (map clojure.string/trim)
          (remove empty?)
+         (remove #(= \& (first %))) ; skip channels starting with "&", like "&raw"
          (map (fn [chan]
+                (if (or (*options* :autojoin) (*options* :autochan))
+                  (to-mud "@joinc " chan))
                 (to-irc ":" (get-state :nick) " JOIN " chan)
                 (report-names chan (get-state :players))
                 (set-state :channels (conj (get-state :channels) chan))))
          dorun)
     (log/debug "Joined channels:" (get-state :channels)))
 
-  (#"PART (.*)" [_ chan]
-    (to-irc ":" (get-state :nick) " PART " chan)
-    (set-state :channels (disj (get-state :channels) chan)))
+  (#"PART (.+?) :(.*)" [_ chans reason]
+    (part-channels chans))
+  (#"PART (.*)" [_ chans]
+    (part-channels chans))
 
   (#"WHO (.*)" [_ chan]
     (report-who chan (get-state :players)))
@@ -89,7 +104,7 @@
     (to-mud msg))
 
   (#"PRIVMSG &IFMUD :\u0001ACTION (.*)\u0001" [_ action]
-    (to-mud " :" action))
+    (to-mud ":" action))
 
   (#"PRIVMSG &IFMUD :(\w+): (.*)" [_  target msg]
     (to-mud ".." target " " msg))
