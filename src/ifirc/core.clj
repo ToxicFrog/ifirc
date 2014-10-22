@@ -9,4 +9,4 @@
   "Proxy between IRC and IFMUD"
   [& argv]
   (binding [*options* (parse-opts argv)]
-    (run-proxy (*options* :listen) (*options* :mud-host) (*options* :mud-port) from-irc from-mud)))
+    (run-proxy (*options* :listen-port) (*options* :mud-host) (*options* :mud-port) from-irc from-mud)))

@@ -79,8 +79,8 @@
         (drain-channel incoming)))))
 
 (defn run-proxy [listen host port irc-mogs mud-mogs]
-  (log/infof "Opening listen socket on port %d" port)
-  (let [sock (ServerSocket. port)]
+  (log/infof "Opening listen socket on port %d" listen)
+  (let [sock (ServerSocket. listen)]
     (loop []
       (if (not (.isClosed sock))
         (let [client (.accept sock)]
