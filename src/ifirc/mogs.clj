@@ -140,7 +140,7 @@
 
   ; local player list
   (#"Players: (.*)" [_ plist]
-    (let [players (clojure.string/split plist #",\s*")]
+    (let [players (set (clojure.string/split plist #",\s*"))]
       (log/debug "Got local player list: " players)
       (set-state :players players)
       (report-names "&IFMUD" players)))
@@ -211,9 +211,11 @@
   (#"(\S+) \| (.*)" [_ user msg]
     (to-irc ":" user " PRIVMSG &IFMUD :\u0001ACTION | " msg "\u0001"))
 
-  ; user action -- do we actually want this mapping?
-  ;(#"(\S+) (.*)\." [_ user msg]
-  ;  (to-irc ":" user " PRIVMSG &IFMUD :\u0001ACTION " msg ".\u0001"))
+  ; user action in local
+  (#"(\S+) (.*)\." [_ user msg]
+    (if (contains? (get-state :players) user)
+      (to-irc ":" user " PRIVMSG &IFMUD :\u0001ACTION " msg ".\u0001")
+      :continue))
 
   ; your message in local - eat these, since the IRC client already echoes them
   (#"You (?:say|ask|exclaim).*" [_]
