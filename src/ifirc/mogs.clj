@@ -85,7 +85,7 @@
     (to-irc ":IFMUD 329 " (get-state :nick) " " chan " 0"))
 
   (#"PING (.*)" [_ time]
-    (to-mud "qidle")
+    (to-mud-silent "qidle")
     (to-irc ":IFMUD PONG IFMUD :" time))
 
   (#"PRIVMSG (#.+?) :\u0001ACTION (.*)\u0001" [_ chan action]
@@ -144,6 +144,9 @@
       (log/debug "Got local player list: " players)
       (set-state :players players)
       (report-names "&IFMUD" players)))
+
+  ; "You are already on channel" message -- IRC traditionally ignores redundant JOINs
+  (#"You are already on #.*" [_] true)
 
   ; bb message
   ; #666 [alt/satan] From: The Pope

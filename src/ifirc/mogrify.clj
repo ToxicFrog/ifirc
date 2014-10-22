@@ -59,8 +59,12 @@
 (defn- rawlog [dir msg]
   (to-irc ":" dir " PRIVMSG &raw :" msg))
 
+; like to-mud, but doesn't log
+(defn to-mud-silent [& msg]
+  (.println *mud-writer* (apply str msg)))
+
 (defn to-mud [& msg]
-  (.println *mud-writer* (apply str msg))
+  (apply to-mud-silent msg)
   (rawlog "<<" (apply str msg)))
 
 (defn get-state
