@@ -212,10 +212,12 @@
     (to-irc ":" user " PRIVMSG &IFMUD :\u0001ACTION | " msg "\u0001"))
 
   ; user action in local
-  (#"(\S+) (.*)\." [_ user msg]
-    (if (contains? (get-state :players) user)
-      (to-irc ":" user " PRIVMSG &IFMUD :\u0001ACTION " msg ".\u0001")
-      :continue))
+  (#"(\S+) (.*)" [_ user msg]
+    (cond
+      ; Skip our own actions, since the IRC client will already have echoed them.
+      (= (get-state :nick) user) true
+      (contains? (get-state :players) user) (to-irc ":" user " PRIVMSG &IFMUD :\u0001ACTION " msg ".\u0001")
+      :else :continue))
 
   ; your message in local - eat these, since the IRC client already echoes them
   (#"You (?:say|ask|exclaim).*" [_]
