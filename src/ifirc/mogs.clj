@@ -4,6 +4,7 @@
             [taoensso.timbre :as log]))
 
 (defn- login [user pass]
+  (set-state :current-channel "#")
   (log/info "Logging in to MUD as" user)
   (to-mud "connect " user " " pass))
 
@@ -97,10 +98,28 @@
   (#"PRIVMSG (#.+?) :(.*)" [_ chan msg]
     (to-mud chan " " msg))
 
-  (#"PRIVMSG &(?:channels|raw) :(.*)" [_ msg]
+  (#"PRIVMSG &channels :(#[^ ]+)" [_ chan]
+    (set-state :current-channel chan)
+    (to-irc ":IFMUD TOPIC &channels :" chan))
+
+  (#"PRIVMSG &channels :(#[^ ]+) +(.*)" [_ chan msg]
+    (set-state :current-channel chan)
+    (to-irc ":IFMUD TOPIC " chan " :" chan)
+    (to-mud chan " " msg))
+
+  (#"PRIVMSG &channels :\u0001ACTION (.*)\u0001" [_ action]
+    (to-mud (get-state :current-channel) " :" action))
+
+  (#"PRIVMSG &channels :(\w+): (.*)" [_ target msg]
+    (to-mud (get-state :current-channel) " .." target " " msg))
+
+  (#"PRIVMSG &channels :(.*)" [_ msg]
+    (to-mud (get-state :current-channel) " " msg))
+
+  (#"PRIVMSG &(?:channels|IFMUD) :\\(.*)" [_ msg]
     (to-mud msg))
 
-  (#"PRIVMSG &IFMUD :\\(.*)" [_ msg]
+  (#"PRIVMSG &raw :(.*)" [_ msg]
     (to-mud msg))
 
   (#"PRIVMSG &IFMUD :\u0001ACTION (.*)\u0001" [_ action]
