@@ -136,6 +136,10 @@
   (#"PRIVMSG &IFMUD :(.*)" [_ msg]
     (to-mud "\"" msg))
 
+  ; Outgoing whispers.
+  (#"PRIVMSG (\w+) :(.*)" [_ target msg]
+    (to-mud "." target " " msg))
+
   (#".*" [line]
     (to-irc "[???] " line)))
 
@@ -221,6 +225,10 @@
   (#"(\S+) (?:says|asks|exclaims), \"(.*)\"" [_ user msg]
     (to-irc ":" user " PRIVMSG &IFMUD :" msg))
 
+  ; user whispers to you
+  (#"(\S+) whispers, \"(.*)\"" [_ user msg]
+    (to-irc ":" user " PRIVMSG " (get-state :nick) " :" msg))
+
   ; user disconnects
   (#"</(\S+)> (.*)" [_ user msg]
     (to-irc ":" user " PART &IFMUD :" msg))
@@ -244,7 +252,7 @@
       :else :continue))
 
   ; your message in local - eat these, since the IRC client already echoes them
-  (#"You (?:say|ask|exclaim).*" [_]
+  (#"You (?:say|ask|exclaim|whisper).*" [_]
     true)
 
   ; all other MUD traffic
