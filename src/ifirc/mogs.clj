@@ -106,7 +106,7 @@
 
   (#"PRIVMSG &channels :(#[^ ]+) +(.*)" [_ chan msg]
     (set-state :current-channel chan)
-    (to-irc ":IFMUD TOPIC " chan " :" chan)
+    (to-irc ":IFMUD TOPIC &channels  :" chan)
     (to-mud chan " " msg))
 
   (#"PRIVMSG &channels :\u0001ACTION (.*)\u0001" [_ action]
