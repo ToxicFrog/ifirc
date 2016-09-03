@@ -24,6 +24,10 @@ The topic shows you what channel you're currently talking on; messages you type 
 
 As with `&IFMUD`, you can use `\` to send raw commands, but for most commands the replies will end up in `&IFMUD`, not `&channels`.
 
+## Whispers/queries
+
+Whispers from people on the MUD will turn into IRC query/private message windows, and replying to them (in those windows or using `/msg`) will be translated into whispers to them on the MUD.
+
 ## Creating IRC channels from MUD channels
 
 If you `/join` an IRC channel, *and you are already in that channel on the MUD*, traffic on that channel will be split off from `&channels`, making it behave like a normal IRC channel. To merge it with `&channels` again, simply /part it. This will not automatically `@joinc` or `@leavec` on the MUD; you must do this yourself. (To change this behaviour, see the `--autojoin` and `--autochan` options, below.)
