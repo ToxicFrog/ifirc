@@ -57,7 +57,7 @@
   (.println *irc-writer* (apply str msg)))
 
 (defn- rawlog [dir msg]
-  (to-irc ":" dir " PRIVMSG &raw :" msg))
+  (to-irc ":" dir " PRIVMSG ##raw :" msg))
 
 ; like to-mud, but doesn't log
 (defn to-mud-silent [& msg]
