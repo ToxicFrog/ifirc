@@ -26,7 +26,7 @@
   (->> (clojure.string/split channels #",")
        (map clojure.string/trim)
        (remove empty?)
-       (remove #(= \& (first %))) ; skip channels starting with "&", like "&raw"
+       (remove #(= \& (first %))) ; skip channels starting with "&", like "##raw"
        (map (fn [chan]
               (if (*options* :autochan)
                 (to-mud "@leavec " chan))
@@ -60,7 +60,7 @@
     (->> (clojure.string/split chans #",")
          (map clojure.string/trim)
          (remove empty?)
-         (remove #(= \& (first %))) ; skip channels starting with "&", like "&raw"
+         (remove #(= \& (first %))) ; skip channels starting with "&", like "##raw"
          (map (fn [chan]
                 (if (or (*options* :autojoin) (*options* :autochan))
                   (to-mud "@joinc " chan))
@@ -89,6 +89,43 @@
     (to-mud-silent "qidle")
     (to-irc ":IFMUD PONG IFMUD :" time))
 
+  ; Messages on the channels control channel, ##channels.
+  (#"PRIVMSG ##channels :(#[^ ]+)" [_ chan]
+    (set-state :current-channel chan)
+    (to-irc ":IFMUD TOPIC ##channels :" chan))
+
+  (#"PRIVMSG ##channels :(#[^ ]+) +(.*)" [_ chan msg]
+    (set-state :current-channel chan)
+    (to-irc ":IFMUD TOPIC ##channels  :" chan)
+    (to-mud chan " " msg))
+
+  (#"PRIVMSG ##channels :\u0001ACTION (.*)\u0001" [_ action]
+    (to-mud (get-state :current-channel) " :" action))
+
+  (#"PRIVMSG ##channels :(\w+): (.*)" [_ target msg]
+    (to-mud (get-state :current-channel) " .." target " " msg))
+
+  (#"PRIVMSG ##channels :(.*)" [_ msg]
+    (to-mud (get-state :current-channel) " " msg))
+
+  ; Messages on ##channels or ##IFMUD starting with \ are raw messages.
+  (#"PRIVMSG ##(?:channels|IFMUD) :\\(.*)" [_ msg]
+    (to-mud msg))
+
+  ; So is everything sent to ##raw.
+  (#"PRIVMSG ##raw :(.*)" [_ msg]
+    (to-mud msg))
+
+  ; Chatting in ##IFMUD turns into speech or emotes in the current room.
+  (#"PRIVMSG ##IFMUD :\u0001ACTION (.*)\u0001" [_ action]
+    (to-mud ":" action))
+
+  (#"PRIVMSG ##IFMUD :(\w+): (.*)" [_ target msg]
+    (to-mud ".." target " " msg))
+
+  (#"PRIVMSG ##IFMUD :(.*)" [_ msg]
+    (to-mud "\"" msg))
+
   ; Messages on split-out (starting with #) channels.
   (#"PRIVMSG (#.+?) :\u0001ACTION (.*)\u0001" [_ chan action]
     (to-mud chan " :" action))
@@ -98,43 +135,6 @@
 
   (#"PRIVMSG (#.+?) :(.*)" [_ chan msg]
     (to-mud chan " " msg))
-
-  ; Messages on the channels control channel, &channels.
-  (#"PRIVMSG &channels :(#[^ ]+)" [_ chan]
-    (set-state :current-channel chan)
-    (to-irc ":IFMUD TOPIC &channels :" chan))
-
-  (#"PRIVMSG &channels :(#[^ ]+) +(.*)" [_ chan msg]
-    (set-state :current-channel chan)
-    (to-irc ":IFMUD TOPIC &channels  :" chan)
-    (to-mud chan " " msg))
-
-  (#"PRIVMSG &channels :\u0001ACTION (.*)\u0001" [_ action]
-    (to-mud (get-state :current-channel) " :" action))
-
-  (#"PRIVMSG &channels :(\w+): (.*)" [_ target msg]
-    (to-mud (get-state :current-channel) " .." target " " msg))
-
-  (#"PRIVMSG &channels :(.*)" [_ msg]
-    (to-mud (get-state :current-channel) " " msg))
-
-  ; Messages on &channels or &IFMUD starting with \ are raw messages.
-  (#"PRIVMSG &(?:channels|IFMUD) :\\(.*)" [_ msg]
-    (to-mud msg))
-
-  ; So is everything sent to &raw.
-  (#"PRIVMSG &raw :(.*)" [_ msg]
-    (to-mud msg))
-
-  ; Chatting in &IFMUD turns into speech or emotes in the current room.
-  (#"PRIVMSG &IFMUD :\u0001ACTION (.*)\u0001" [_ action]
-    (to-mud ":" action))
-
-  (#"PRIVMSG &IFMUD :(\w+): (.*)" [_ target msg]
-    (to-mud ".." target " " msg))
-
-  (#"PRIVMSG &IFMUD :(.*)" [_ msg]
-    (to-mud "\"" msg))
 
   ; Outgoing whispers.
   (#"PRIVMSG (\w+) :(.*)" [_ target msg]
@@ -159,9 +159,9 @@
          (to-mud autoexec))
        (to-irc ":IFMUD 001 " (get-state :nick) " :Welcome to ifMUD!")
        (to-irc ":IFMUD 376 " (get-state :nick) " :End of MOTD")
-       (to-irc ":" (get-state :nick) " JOIN &IFMUD")
-       (to-irc ":" (get-state :nick) " JOIN &raw")
-       (to-irc ":" (get-state :nick) " JOIN &channels"))
+       (to-irc ":" (get-state :nick) " JOIN ##IFMUD")
+       (to-irc ":" (get-state :nick) " JOIN ##raw")
+       (to-irc ":" (get-state :nick) " JOIN ##channels"))
      (do
        (log/error "Error: no valid nick after login, bailing")
        :exit)))
@@ -171,7 +171,7 @@
     (let [players (set (clojure.string/split plist #",\s*"))]
       (log/debug "Got local player list: " players)
       (set-state :players players)
-      (report-names "&IFMUD" players)))
+      (report-names "##IFMUD" players)))
 
   ; "You are already on channel" message -- IRC traditionally ignores redundant JOINs
   (#"You are already on #.*" [_] true)
@@ -179,7 +179,7 @@
   ; bb message
   ; #666 [alt/satan] From: The Pope
   (#"#\d+ \[[^\]]+\].*" [line]
-    (to-irc ":* PRIVMSG &IFMUD :" line))
+    (to-irc ":* PRIVMSG ##IFMUD :" line))
 
   ; targeted channel message - [foo] Someone says (to SomeoneElse), "stuff"
   (#"\[(\S+)\] (\S+) (?:says|asks|exclaims) \((?:to|of|at) (\S+)\), \"(.*)\"" [_ chan user target msg]
@@ -187,7 +187,7 @@
       (cond
         (= user (get-state :nick)) true ; eat messages from the user
         ((get-state :channels) chan) (to-irc ":" user " PRIVMSG " chan " :" target ": " msg)
-        :else (to-irc ":[" chan "] PRIVMSG &channels :<" user "> " target ": " msg))))
+        :else (to-irc ":[" chan "] PRIVMSG ##channels :<" user "> " target ": " msg))))
 
   ; untargeted channel message - [foo] Someone says, "stuff"
   (#"\[(\S+)\] (\S+) (?:says|asks|exclaims), \"(.*)\"" [_ chan user msg]
@@ -195,7 +195,7 @@
       (cond
         (= user (get-state :nick)) true ; eat messages from the user
         ((get-state :channels) chan) (to-irc ":" user " PRIVMSG " chan " :" msg)
-        :else (to-irc ":[" chan "] PRIVMSG &channels :<" user "> " msg))))
+        :else (to-irc ":[" chan "] PRIVMSG ##channels :<" user "> " msg))))
 
   ; channel join/part
   (#"\[(\S+)\] \* (\S+) has (joined|left) the channel\." [_ chan user action]
@@ -211,7 +211,7 @@
       (cond
         (= user (get-state :nick)) true
         ((get-state :channels) chan) (to-irc ":" user " PRIVMSG " chan " :\u0001ACTION " action "\u0001")
-        :else (to-irc ":[" chan "] PRIVMSG &channels :\u0001ACTION " user " " action "\u0001"))))
+        :else (to-irc ":[" chan "] PRIVMSG ##channels :\u0001ACTION " user " " action "\u0001"))))
 
   ; raw message on channel
   (#"\[(\S+)\] (.*)" [_ chan msg]
@@ -219,11 +219,11 @@
 
   ; targeted user message in local
   (#"(\S+) (?:says|asks|exclaims) \((?:to|of|at) (\S+)\), \"(.*)\"" [_ user target msg]
-    (to-irc ":" user " PRIVMSG &IFMUD :" target ": " msg))
+    (to-irc ":" user " PRIVMSG ##IFMUD :" target ": " msg))
 
   ; user message in local
   (#"(\S+) (?:says|asks|exclaims), \"(.*)\"" [_ user msg]
-    (to-irc ":" user " PRIVMSG &IFMUD :" msg))
+    (to-irc ":" user " PRIVMSG ##IFMUD :" msg))
 
   ; user whispers to you
   (#"(\S+) whispers, \"(.*)\"" [_ user msg]
@@ -231,24 +231,24 @@
 
   ; user disconnects
   (#"</(\S+)> (.*)" [_ user msg]
-    (to-irc ":" user " PART &IFMUD :" msg))
+    (to-irc ":" user " PART ##IFMUD :" msg))
   (#"(\S+) has disconnected\." [_ user]
-    (to-irc ":" user " PART &IFMUD :disconnect" ))
+    (to-irc ":" user " PART ##IFMUD :disconnect" ))
 
   ; user connects
   (#"<(\S+)> (.*)" [_ user msg]
-    (to-irc ":" user " JOIN &IFMUD"))
+    (to-irc ":" user " JOIN ##IFMUD"))
 
   ; user | action
   (#"(\S+) \| (.*)" [_ user msg]
-    (to-irc ":" user " PRIVMSG &IFMUD :\u0001ACTION | " msg "\u0001"))
+    (to-irc ":" user " PRIVMSG ##IFMUD :\u0001ACTION | " msg "\u0001"))
 
   ; user action in local
   (#"(\S+) (.*)" [_ user msg]
     (cond
       ; Skip our own actions, since the IRC client will already have echoed them.
       (= (get-state :nick) user) true
-      (contains? (get-state :players) user) (to-irc ":" user " PRIVMSG &IFMUD :\u0001ACTION " msg "\u0001")
+      (contains? (get-state :players) user) (to-irc ":" user " PRIVMSG ##IFMUD :\u0001ACTION " msg "\u0001")
       :else :continue))
 
   ; your message in local - eat these, since the IRC client already echoes them
@@ -257,4 +257,4 @@
 
   ; all other MUD traffic
   (#".*" [line]
-    (to-irc ":* PRIVMSG &IFMUD :" line)))
+    (to-irc ":* PRIVMSG ##IFMUD :" line)))
