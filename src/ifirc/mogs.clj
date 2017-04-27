@@ -89,6 +89,14 @@
     (to-mud-silent "qidle")
     (to-irc ":IFMUD PONG IFMUD :" time))
 
+  ; Messages on ##channels or ##IFMUD starting with \ are raw messages.
+  (#"PRIVMSG ##(?:channels|IFMUD) :\\(.*)" [_ msg]
+    (to-mud msg))
+
+  ; So is everything sent to ##raw.
+  (#"PRIVMSG ##raw :(.*)" [_ msg]
+    (to-mud msg))
+
   ; Messages on the channels control channel, ##channels.
   (#"PRIVMSG ##channels :(#[^ ]+)" [_ chan]
     (set-state :current-channel chan)
@@ -107,14 +115,6 @@
 
   (#"PRIVMSG ##channels :(.*)" [_ msg]
     (to-mud (get-state :current-channel) " " msg))
-
-  ; Messages on ##channels or ##IFMUD starting with \ are raw messages.
-  (#"PRIVMSG ##(?:channels|IFMUD) :\\(.*)" [_ msg]
-    (to-mud msg))
-
-  ; So is everything sent to ##raw.
-  (#"PRIVMSG ##raw :(.*)" [_ msg]
-    (to-mud msg))
 
   ; Chatting in ##IFMUD turns into speech or emotes in the current room.
   (#"PRIVMSG ##IFMUD :\u0001ACTION (.*)\u0001" [_ action]
