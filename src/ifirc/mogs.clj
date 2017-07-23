@@ -18,10 +18,6 @@
            users))
   (to-irc ":IFMUD " 315 " " (get-state :nick) " " chan " :End of WHO."))
 
-(defn- report-names [chan users]
-  (to-irc ":IFMUD 353 " (get-state :nick) " = " chan " :" (apply str (interpose " " users)))
-  (to-irc ":IFMUD 366 " (get-state :nick) " " chan " :No more NAMES."))
-
 (defn- part-channels [channels]
   (->> (clojure.string/split channels #",")
        (map clojure.string/trim)
@@ -32,6 +28,24 @@
                 (to-mud "@leavec " chan))
               (to-irc ":" (get-state :nick) " PART " chan)
               (set-state :channels (disj (get-state :channels) chan))))))
+
+(defn- reduce-names [names name]
+  (cond
+    (< 384 (count (first names))) (reduce-names (conj names "") name)
+    :else (conj (rest names) (str (first names) " " name))))
+
+; Send a series of 353 messages containing the listed users.
+(defn- send-names [chan users]
+  (let [messages (reduce reduce-names '("") users)]
+    (dorun
+      (map #(to-irc ":IFMUD 353 " (get-state :nick) " = " chan " :" %)
+           messages))))
+
+; Given a list of comma-or-whitespace-separated users, some of whom may be in
+; (parens), split it into a list of user names.
+(defn- split-users [users]
+  (map #(clojure.string/replace % #"[()]" "")
+       (clojure.string/split users #"[, ]\s*")))
 
 (defmogs from-irc
   ; ignore capability requests from ZNC
@@ -55,17 +69,17 @@
   (#"QUIT :.*" [_]
     (to-mud "quit"))
 
-  ; TODO: use @statc <channel> to get channel topic and userlist
   (#"JOIN (.*)" [_ chans]
     (->> (clojure.string/split chans #",")
          (map clojure.string/trim)
          (remove empty?)
-         (remove #(= \& (first %))) ; skip channels starting with "&", like "##raw"
+         ; skip channels starting with "##", like "##raw"
+         (remove #(clojure.string/starts-with? % "##"))
          (map (fn [chan]
                 (if (or (*options* :autojoin) (*options* :autochan))
                   (to-mud "@joinc " chan))
                 (to-irc ":" (get-state :nick) " JOIN " chan)
-                (report-names chan (get-state :players))
+                (to-mud "@statc " chan)
                 (set-state :channels (conj (get-state :channels) chan))))
          dorun)
     (log/debug "Joined channels:" (get-state :channels)))
@@ -79,7 +93,8 @@
     (report-who chan (get-state :players)))
 
   (#"NAMES (.*)" [_ chan]
-    (report-names chan (get-state :players)))
+    ; TODO: DTRT here if chan == ##ifmud
+    (to-mud "@statc " chan))
 
   (#"MODE (.*)" [_ chan]
     (to-irc ":IFMUD 324 " (get-state :nick) " " chan " +ntr")
@@ -168,10 +183,12 @@
 
   ; local player list
   (#"Players: (.*)" [_ plist]
-    (let [players (set (clojure.string/split plist #",\s*"))]
+    (let [players (set (split-users plist))]
       (log/debug "Got local player list: " players)
       (set-state :players players)
-      (report-names "##IFMUD" players)))
+      (send-names "##IFMUD" players)
+      (to-irc ":IFMUD 366 " (get-state :nick) " ##IFMUD :No more NAMES."))
+      )
 
   ; "You are already on channel" message -- IRC traditionally ignores redundant JOINs
   (#"You are already on #.*" [_] true)
@@ -254,6 +271,31 @@
   ; your message in local - eat these, since the IRC client already echoes them
   (#"You (?:say|ask|exclaim|whisper).*" [_]
     true)
+
+  ; the output of a statc looks something like:
+  ; <fully qualified name>: <topic>
+  ; Created: <datetime> Last message: <datetime>
+  ; Users: <\s-separated list of online users>
+  ; Also: <\s-separated list of offline users, each name in (parens)>
+  ; There are (no/N) new messages on <FQCN>.
+  ; Note that:
+  ; the "no new messages" item only appears if you're in the channel;
+  ; The FQCN is prefixed with '#' if you're in the channel, and ' ' otherwise.
+  ; So this will only work for channels that you're already in.
+  (#"#[a-z!]+/[^ ]+/([^/ ]+): (.*)" [_ chan topic]
+    (set-state :statting (str "#" chan))
+    (to-irc ":IFMUD 332 " (get-state :nick) " #" chan ":" topic))
+
+  (#"Users: (.*)" [_ users]
+    (if (get-state :statting)
+      (send-names (get-state :statting) (split-users users))))
+
+  (#"Also: (.*)" [_ users]
+    (if (get-state :statting)
+      (do
+        (send-names (get-state :statting) (split-users users))
+        (to-irc ":IFMUD 366 " (get-state :nick) " " (get-state :statting) " :No more NAMES."))
+        (set-state :statting nil)))
 
   ; all other MUD traffic
   (#".*" [line]
