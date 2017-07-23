@@ -256,10 +256,6 @@
   (#"<(\S+)> (.*)" [_ user msg]
     (to-irc ":" user " JOIN ##IFMUD"))
 
-  ; user | action
-  (#"(\S+) \| (.*)" [_ user msg]
-    (to-irc ":" user " PRIVMSG ##IFMUD :\u0001ACTION | " msg "\u0001"))
-
   ; user action in local
   (#"(\S+) (.*)" [_ user msg]
     (cond
