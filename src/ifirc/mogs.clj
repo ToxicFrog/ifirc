@@ -255,6 +255,9 @@
   ; user connects
   (#"<(\S+)> (.*)" [_ user msg]
     (to-irc ":" user " JOIN ##IFMUD"))
+  ; user teleports to lounge
+  (#"\(\((\S+)\(.*\)->lounge\(.*\)\)\)" [_ user]
+    (to-irc ":" user " JOIN ##IFMUD"))
 
   ; user action in local
   (#"(\S+) (.*)" [_ user msg]
