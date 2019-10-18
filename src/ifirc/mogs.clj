@@ -56,12 +56,12 @@
   (#"USER .*" [_]
     true)
 
-  (#"NICK (.*)" [_ nick]
+  (#"NICK :?(.*)" [_ nick]
     (set-state :nick nick)
     (if (get-state :pass)
       (login (get-state :nick) (get-state :pass))))
 
-  (#"PASS (.*)" [_ pass]
+  (#"PASS :?(.*)" [_ pass]
     (set-state :pass pass)
     (if (get-state :nick)
       (login (get-state :nick) (get-state :pass))))
