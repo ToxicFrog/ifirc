@@ -54,6 +54,7 @@
 (def ^:dynamic *mud-writer* nil)
 
 (defn to-irc [& msg]
+  (log/info "<<" (apply str msg))
   (.println *irc-writer* (apply str msg)))
 
 (defn- rawlog [dir msg]
@@ -78,7 +79,9 @@
 (defn mogrifier [incoming irc-mogs mud-mogs]
   (loop [[id msg] (<!! incoming)]
     (if (case id
-          :irc (domogs irc-mogs msg)
+          :irc (do
+                 (log/info ">>" (apply str msg))
+                 (domogs irc-mogs msg))
           :mud (do
                  (rawlog ">>" (apply str msg))
                  (domogs mud-mogs msg))
