@@ -1,7 +1,8 @@
 (ns ifirc.mogs
   (:require [ifirc.mogrify :refer :all]
             [ifirc.flags :refer [*options*]]
-            [taoensso.timbre :as log]))
+            [taoensso.timbre :as log]
+            [clojure.string :as string]))
 
 (defn- login [user pass]
   (set-state :current-channel "#")
@@ -29,17 +30,14 @@
               (to-irc ":" (get-state :nick) " PART " chan)
               (set-state :channels (disj (get-state :channels) chan))))))
 
-(defn- reduce-names [names name]
-  (cond
-    (< 384 (count (first names))) (reduce-names (conj names "") name)
-    :else (conj (rest names) (str (first names) " " name))))
-
 ; Send a series of 353 messages containing the listed users.
 (defn- send-names [chan users]
-  (let [messages (reduce reduce-names '("") users)]
-    (dorun
-      (map #(to-irc ":IFMUD 353 " (get-state :nick) " = " chan " :" %)
-           messages))))
+  (let [max-namelen (apply max (map count users))
+        names-per-line (int (/ 384 max-namelen))]
+    (->> users
+         (partition-all names-per-line)
+         (map (partial string/join " "))
+         (run! (partial to-irc ":IFMUD 353 " (get-state :nick) " = " chan " :")))))
 
 ; Given a list of comma-or-whitespace-separated users, some of whom may be in
 ; (parens), split it into a list of user names.
