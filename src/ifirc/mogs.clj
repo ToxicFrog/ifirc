@@ -281,7 +281,7 @@
   ; So this will only work for channels that you're already in.
   (#"#[a-z!]+/[^ ]+/([^/ ]+): (.*)" [_ chan topic]
     (set-state :statting (str "#" chan))
-    (to-irc ":IFMUD 332 " (get-state :nick) " #" chan ":" topic))
+    (to-irc ":IFMUD 332 " (get-state :nick) " #" chan " :" topic))
 
   (#"Users: (.*)" [_ users]
     (if (get-state :statting)
