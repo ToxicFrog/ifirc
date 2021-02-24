@@ -201,7 +201,7 @@
     (let [chan (str "#" chan)]
       (cond
         (= user (get-state :nick)) true ; eat messages from the user
-        ((get-state :channels) chan) (to-irc ":" user " PRIVMSG " chan " :" target ": " msg)
+        ((get-state :channels) chan) (to-irc ":" user "!user@ifmud PRIVMSG " chan " :" target ": " msg)
         :else (to-irc ":[" chan "] PRIVMSG ##channels :<" user "> " target ": " msg))))
 
   ; untargeted channel message - [foo] Someone says, "stuff"
@@ -209,7 +209,7 @@
     (let [chan (str "#" chan)]
       (cond
         (= user (get-state :nick)) true ; eat messages from the user
-        ((get-state :channels) chan) (to-irc ":" user " PRIVMSG " chan " :" msg)
+        ((get-state :channels) chan) (to-irc ":" user "!user@ifmud PRIVMSG " chan " :" msg)
         :else (to-irc ":[" chan "] PRIVMSG ##channels :<" user "> " msg))))
 
   ; channel join/part
@@ -225,7 +225,7 @@
     (let [chan (str "#" chan)]
       (cond
         (= user (get-state :nick)) true
-        ((get-state :channels) chan) (to-irc ":" user " PRIVMSG " chan " :\u0001ACTION " action "\u0001")
+        ((get-state :channels) chan) (to-irc ":" user "!user@ifmud PRIVMSG " chan " :\u0001ACTION " action "\u0001")
         :else (to-irc ":[" chan "] PRIVMSG ##channels :\u0001ACTION " user " " action "\u0001"))))
 
   ; raw message on channel
